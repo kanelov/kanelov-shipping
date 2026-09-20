@@ -157,9 +157,9 @@ final class EcontNomenclature {
 				! empty( $o['isMPS'] ) ? 1 : 0,
 				(string) ( $o['name'] ?? '' ),
 				(string) ( $o['nameEn'] ?? '' ),
-				(string) ( $o['address']['fullAddress'] ?? '' ),
-				(float) ( $o['address']['latitude'] ?? 0 ),
-				(float) ( $o['address']['longitude'] ?? 0 ),
+				trim( (string) ( $o['address']['fullAddress'] ?? '' ) ),
+				(float) ( $o['address']['location']['latitude'] ?? $o['address']['latitude'] ?? 0 ),
+				(float) ( $o['address']['location']['longitude'] ?? $o['address']['longitude'] ?? 0 ),
 				implode( ', ', array_map( 'strval', (array) ( $o['phones'] ?? [] ) ) ),
 				$hours,
 				$now
