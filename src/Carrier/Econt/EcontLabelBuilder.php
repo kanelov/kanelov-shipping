@@ -17,7 +17,9 @@ use Kanelov\Shipping\Support\Text;
  *  order_number, order_total, currency, is_cod
  *  options:  weight, pack_count, description, shipment_type, declared_value, sms_notification,
  *            invoice_before_pay_cd, cd_pay_options_template, sender_payment_method,
- *            receiver_pays_shipping, receiver_amount, invoice_num
+ *            receiver_pays_shipping, receiver_amount, invoice_num, packing_list (bool),
+ *            pay_after ('' | accept | test), holiday_delivery_day (workday | halfday),
+ *            instructions ([ [id, type], ... ])
  *  defaults: default_weight, min_weight, description_mode, description_max_length
  */
 final class EcontLabelBuilder {
@@ -150,9 +152,51 @@ final class EcontLabelBuilder {
 			$label['paymentReceiverAmount'] = $receiver_amount;
 		}
 
-		$label['holidayDeliveryDay'] = 'workday';
+		// Опис на стоките (Еконт го иска заедно с или вместо номер на фактура при споразумение за НП).
+		if ( ! empty( $opt['packing_list'] ) && $items ) {
+			$label['packingListType'] = 'digital';
+			$label['packingList']     = self::packing_list( $items, (float) ( $def['default_weight'] ?? 0.5 ) );
+		}
+
+		// Преглед или тест на стоката преди плащане.
+		if ( ( $opt['pay_after'] ?? '' ) === 'accept' ) {
+			$label['payAfterAccept'] = true;
+		} elseif ( ( $opt['pay_after'] ?? '' ) === 'test' ) {
+			$label['payAfterTest'] = true;
+		}
+
+		// Ако доставката се пада в почивен ден: workday = първи работен ден, halfday = събота.
+		$label['holidayDeliveryDay'] = ( $opt['holiday_delivery_day'] ?? '' ) === 'halfday' ? 'halfday' : 'workday';
+
+		// Инструкции от профила (връщане, вземане, предаване).
+		$instructions = [];
+		foreach ( (array) ( $opt['instructions'] ?? [] ) as $i ) {
+			if ( ! empty( $i['id'] ) && in_array( $i['type'] ?? '', [ 'return', 'take', 'give' ], true ) ) {
+				$instructions[] = [ 'id' => (int) $i['id'], 'type' => (string) $i['type'] ];
+			}
+		}
+		if ( $instructions ) {
+			$label['instructions'] = $instructions;
+		}
 
 		return $label;
+	}
+
+	/** Опис за Еконт: по ред за всеки артикул, цена за брой. */
+	public static function packing_list( array $items, float $default_weight ): array {
+		$list = [];
+		foreach ( array_values( $items ) as $i => $item ) {
+			$qty    = max( 1, (int) ( $item['qty'] ?? 1 ) );
+			$w      = $item['weight'] ?? null;
+			$list[] = [
+				'inventoryNum' => (string) ( $i + 1 ),
+				'description'  => Text::truncate_words( Text::clean_for_label( (string) ( $item['name'] ?? '' ) ) ?: 'Стока', 100 ),
+				'weight'       => round( ( is_numeric( $w ) && (float) $w > 0 ? (float) $w : $default_weight ) * $qty, 3 ),
+				'count'        => $qty,
+				'price'        => round( (float) ( $item['price'] ?? 0 ) / $qty, 2 ),
+			];
+		}
+		return $list;
 	}
 
 	public static function total_weight( array $items, float $default_weight ): float {

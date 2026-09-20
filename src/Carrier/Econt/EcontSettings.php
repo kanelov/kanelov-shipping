@@ -135,6 +135,39 @@ final class EcontSettings {
 		return in_array( $type, DeliveryData::TYPES, true ) ? $type : '';
 	}
 
+	// Услуги при доставка.
+
+	/** Номер на фактура в товарителницата = номер на поръчката. */
+	public function invoice_num_from_order(): bool {
+		return $this->bool( 'invoice_num_from_order', true );
+	}
+
+	/** Опис на стоките (digital packing list) при наложен платеж. */
+	public function packing_list(): bool {
+		return $this->bool( 'packing_list', true );
+	}
+
+	/** '' | 'accept' (преглед) | 'test' (тест на стоката) преди плащане. */
+	public function pay_after(): string {
+		$v = (string) $this->get( 'pay_after', '' );
+		return in_array( $v, [ 'accept', 'test' ], true ) ? $v : '';
+	}
+
+	/** 'workday' (първи работен ден) | 'halfday' (събота). */
+	public function holiday_delivery_day(): string {
+		return (string) $this->get( 'holiday_delivery_day', 'workday' ) === 'halfday' ? 'halfday' : 'workday';
+	}
+
+	/** Клиентът избира деня в чекаута (само до адрес). */
+	public function holiday_choice_checkout(): bool {
+		return $this->bool( 'holiday_choice_checkout', true );
+	}
+
+	/** Id-та на избраните инструкции от профила. */
+	public function instruction_ids(): array {
+		return array_values( array_filter( array_map( 'intval', (array) $this->get( 'instructions', [] ) ) ) );
+	}
+
 	// Ограничения за Еконтомат.
 	public function locker_max_weight(): float {
 		return $this->float( 'locker_max_weight', 20 );

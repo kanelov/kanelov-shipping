@@ -156,7 +156,18 @@ final class DeliveryFormView {
 			woocommerce_form_field( $f( 'floor' ), [ 'type' => 'text', 'label' => __( 'Етаж', 'kanelov-shipping' ), 'class' => [ 'ks-span-2' ] ], $saved->floor );
 			woocommerce_form_field( $f( 'apartment' ), [ 'type' => 'text', 'label' => __( 'Апартамент', 'kanelov-shipping' ), 'class' => [ 'ks-span-2' ] ], $saved->apartment );
 			woocommerce_form_field( $f( 'note' ), [ 'type' => 'text', 'label' => __( 'Бележка за куриера', 'kanelov-shipping' ), 'class' => [ 'ks-span-6' ], 'placeholder' => __( 'Ориентир, звънец, фирма…', 'kanelov-shipping' ) ], $saved->note );
-			?>
+			$settings = new EcontSettings();
+			if ( $with_type_select || $settings->holiday_choice_checkout() ) :
+				$day = $saved->delivery_day ?: $settings->holiday_delivery_day();
+				?>
+				<fieldset class="form-row ks-span-6 ks-delivery-day">
+					<legend class="ks-step__label"><?php esc_html_e( 'Ако доставката се падне в почивен ден', 'kanelov-shipping' ); ?></legend>
+					<span class="ks-radio-row">
+						<label><input type="radio" name="<?php echo esc_attr( $f( 'delivery_day' ) ); ?>" value="workday" <?php checked( $day, 'workday' ); ?>> <?php esc_html_e( 'в първия работен ден', 'kanelov-shipping' ); ?></label>
+						<label><input type="radio" name="<?php echo esc_attr( $f( 'delivery_day' ) ); ?>" value="halfday" <?php checked( $day, 'halfday' ); ?>> <?php esc_html_e( 'в събота', 'kanelov-shipping' ); ?></label>
+					</span>
+				</fieldset>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -180,6 +191,7 @@ final class DeliveryFormView {
 			'floor'       => $get( 'floor' ),
 			'apartment'   => $get( 'apartment' ),
 			'note'        => $get( 'note' ),
+			'delivery_day' => in_array( $get( 'delivery_day' ), [ 'workday', 'halfday' ], true ) ? $get( 'delivery_day' ) : '',
 		] );
 	}
 }

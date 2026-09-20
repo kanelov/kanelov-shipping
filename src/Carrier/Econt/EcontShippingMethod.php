@@ -285,6 +285,58 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 					'desc_tip'    => true,
 				],
 
+				'invoice_num_from_order' => [
+					'title'       => __( 'Номер на фактура', 'kanelov-shipping' ),
+					'type'        => 'checkbox',
+					'label'       => __( 'Номерът на поръчката се подава като номер на фактура', 'kanelov-shipping' ),
+					'default'     => 'yes',
+					'description' => __( 'При споразумение за НП по департамент Еконт изисква номер на фактура или опис. Без това създаването на товарителница спира с грешка.', 'kanelov-shipping' ),
+				],
+				'packing_list' => [
+					'title'   => __( 'Опис на стоките', 'kanelov-shipping' ),
+					'type'    => 'checkbox',
+					'label'   => __( 'Към товарителницата се прилага електронен опис с продуктите, броя и цените', 'kanelov-shipping' ),
+					'default' => 'yes',
+				],
+
+				'services_section' => [
+					'title'       => __( 'Услуги при доставка', 'kanelov-shipping' ),
+					'type'        => 'title',
+					'description' => __( 'Стойности по подразбиране. В кутията „Еконт“ на поръчката могат да се променят за конкретна пратка.', 'kanelov-shipping' ),
+				],
+				'pay_after' => [
+					'title'   => __( 'Преди плащане на НП', 'kanelov-shipping' ),
+					'type'    => 'select',
+					'default' => '',
+					'options' => [
+						''       => __( 'Без преглед', 'kanelov-shipping' ),
+						'accept' => __( 'Преглед на пратката', 'kanelov-shipping' ),
+						'test'   => __( 'Тест на стоката (не се предлага във всеки офис)', 'kanelov-shipping' ),
+					],
+				],
+				'holiday_delivery_day' => [
+					'title'       => __( 'Доставка в почивен ден', 'kanelov-shipping' ),
+					'type'        => 'select',
+					'default'     => 'workday',
+					'options'     => [ 'workday' => __( 'В първия работен ден', 'kanelov-shipping' ), 'halfday' => __( 'В събота', 'kanelov-shipping' ) ],
+					'description' => __( 'Ако пратката пристигне за почивен ден (напр. изпратена в петък до адрес).', 'kanelov-shipping' ),
+					'desc_tip'    => true,
+				],
+				'holiday_choice_checkout' => [
+					'title'   => __( 'Избор на ден в чекаута', 'kanelov-shipping' ),
+					'type'    => 'checkbox',
+					'label'   => __( 'Клиентът избира събота или първи работен ден при доставка до адрес', 'kanelov-shipping' ),
+					'default' => 'yes',
+				],
+				'instructions' => [
+					'title'       => __( 'Инструкции към куриера', 'kanelov-shipping' ),
+					'type'        => 'multiselect',
+					'default'     => [],
+					'options'     => $profile->instruction_choices(),
+					'class'       => 'wc-enhanced-select',
+					'description' => $profile->instruction_choices() ? __( 'Шаблоните се създават в ee.econt.com и се зареждат с „Обнови профила“.', 'kanelov-shipping' ) : __( 'В профила няма шаблони за инструкции. Създайте ги в ee.econt.com и натиснете „Обнови профила“.', 'kanelov-shipping' ),
+				],
+
 				'shipment_section' => [ 'title' => __( 'Пратка', 'kanelov-shipping' ), 'type' => 'title' ],
 				'shipment_type'    => [
 					'title'   => __( 'Вид пратка', 'kanelov-shipping' ),

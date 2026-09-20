@@ -138,8 +138,10 @@
 		var saved = recall();
 		if (saved) {
 			Object.keys(saved).forEach(function (k) {
-				if (k === 'type') return;
-				var i = root.querySelector('[name="ks_' + k + '"]'); if (i && saved[k] && !i.value) i.value = saved[k];
+				if (k === 'type' || !saved[k]) return;
+				var i = root.querySelector('[name="ks_' + k + '"]'); if (!i) return;
+				if (i.type === 'radio') { var r = root.querySelector('[name="ks_' + k + '"][value="' + saved[k] + '"]'); if (r) r.checked = true; return; }
+				if (!i.value) i.value = saved[k];
 			});
 			var officeInput = root.querySelector('.ks-office'), sel = root.querySelector('.ks-office-selected');
 			if (saved.office_code) { officeInput.value = saved.office_name; sel.hidden = false; sel.textContent = '✓ ' + saved.office_name; }

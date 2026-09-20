@@ -28,6 +28,8 @@ final class DeliveryData {
 	public string $floor       = '';
 	public string $apartment   = '';
 	public string $note        = '';
+	/** Ако доставката се пада в почивен ден: '' (по настройка), 'workday' или 'halfday' (събота). Само до адрес. */
+	public string $delivery_day = '';
 
 	public static function from_array( array $data ): self {
 		$self = new self();

@@ -61,6 +61,10 @@ body.ks-hide-rates #shipping_method li.ks-current input[type="radio"] { display:
 .ks-span-2 { grid-column: span 2; }
 .ks-span-4 { grid-column: span 4; }
 .ks-span-6 { grid-column: span 6; }
+.ks-delivery-day { border: 0; padding: 0; margin: 0 0 1em; min-width: 0; }
+.ks-delivery-day .ks-step__label { font-weight: 500; white-space: normal; }
+.ks-radio-row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.ks-radio-row label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; cursor: pointer; }
 
 /* Падащ списък за търсене */
 .ks-combo { position: relative; }

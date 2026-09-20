@@ -103,6 +103,30 @@ final class EcontProfile {
 		return $out;
 	}
 
+	/** Инструкциите от профила за multiselect: id => "[тип] име". */
+	public function instruction_choices(): array {
+		$types = [ 'return' => __( 'връщане', 'kanelov-shipping' ), 'take' => __( 'вземане', 'kanelov-shipping' ), 'give' => __( 'предаване', 'kanelov-shipping' ) ];
+		$out   = [];
+		foreach ( $this->instruction_templates() as $t ) {
+			if ( empty( $t['id'] ) ) {
+				continue;
+			}
+			$out[ (string) $t['id'] ] = sprintf( '[%s] %s', $types[ $t['type'] ?? '' ] ?? (string) ( $t['type'] ?? '' ), (string) ( $t['name'] ?? $t['title'] ?? $t['id'] ) );
+		}
+		return $out;
+	}
+
+	/** Инструкции за товарителницата по избрани id-та: [ [id, type], ... ]. */
+	public function instructions_for( array $ids ): array {
+		$out = [];
+		foreach ( $this->instruction_templates() as $t ) {
+			if ( in_array( (int) ( $t['id'] ?? 0 ), $ids, true ) ) {
+				$out[] = [ 'id' => (int) $t['id'], 'type' => (string) ( $t['type'] ?? '' ) ];
+			}
+		}
+		return $out;
+	}
+
 	public static function format_address( array $a ): string {
 		return trim( implode( ' ', array_filter( [
 			$a['city']['name'] ?? '',

@@ -143,6 +143,37 @@ final class EcontLabelBuilderTest extends TestCase {
 		$this->assertSame( $addr, $label['senderAddress'] );
 	}
 
+	public function test_packing_list_invoice_and_services(): void {
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [
+			'packing_list'         => true,
+			'invoice_num'          => '1523',
+			'pay_after'            => 'accept',
+			'holiday_delivery_day' => 'halfday',
+			'instructions'         => [ [ 'id' => 704594, 'type' => 'return' ], [ 'id' => 1, 'type' => 'bogus' ], [ 'id' => 0, 'type' => 'take' ] ],
+		] ] ) );
+
+		$this->assertSame( 'digital', $label['packingListType'] );
+		$this->assertCount( 2, $label['packingList'] );
+		$this->assertSame( [ 'inventoryNum' => '1', 'description' => 'Картина „Море“ 60x90', 'weight' => 1.2, 'count' => 1, 'price' => 89.0 ], $label['packingList'][0] );
+		$this->assertSame( 2, $label['packingList'][1]['count'] );
+		$this->assertSame( 1.0, $label['packingList'][1]['weight'], 'две бройки по тегло по подразбиране 0.5' );
+		$this->assertSame( 10.0, $label['packingList'][1]['price'], 'цена за брой' );
+		$this->assertSame( '1523', $label['services']['invoiceNum'] );
+		$this->assertTrue( $label['payAfterAccept'] );
+		$this->assertArrayNotHasKey( 'payAfterTest', $label );
+		$this->assertSame( 'halfday', $label['holidayDeliveryDay'] );
+		$this->assertSame( [ [ 'id' => 704594, 'type' => 'return' ] ], $label['instructions'], 'невалиден тип и id 0 отпадат' );
+	}
+
+	public function test_defaults_have_no_packing_list_or_instructions(): void {
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input() );
+
+		$this->assertArrayNotHasKey( 'packingList', $label );
+		$this->assertArrayNotHasKey( 'instructions', $label );
+		$this->assertArrayNotHasKey( 'payAfterAccept', $label );
+		$this->assertSame( 'workday', $label['holidayDeliveryDay'] );
+	}
+
 	public function test_phone_normalization(): void {
 		$this->assertSame( '0887123456', EcontLabelBuilder::normalize_phone( '+359 887 123 456' ) );
 		$this->assertSame( '0887123456', EcontLabelBuilder::normalize_phone( '00359887123456' ) );

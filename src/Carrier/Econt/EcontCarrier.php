@@ -164,6 +164,11 @@ final class EcontCarrier implements CarrierInterface {
 				'receiver_amount'         => (float) $order->get_shipping_total() + (float) $order->get_shipping_tax(),
 				'shipment_type'           => $settings->shipment_type(),
 				'declared_value'          => $settings->declared_value_threshold() > 0 && (float) $order->get_total() >= $settings->declared_value_threshold() ? (float) $order->get_total() : 0,
+				'invoice_num'             => $settings->invoice_num_from_order() ? $order->get_order_number() : '',
+				'packing_list'            => $settings->packing_list(),
+				'pay_after'               => $settings->pay_after(),
+				'holiday_delivery_day'    => $delivery->delivery_day ?: $settings->holiday_delivery_day(),
+				'instructions'            => $profile->instructions_for( $settings->instruction_ids() ),
 			], $options ),
 			'defaults'     => [
 				'default_weight'         => $settings->default_weight(),

@@ -20,3 +20,7 @@
 #ks-order.ks-busy { opacity: .5; pointer-events: none; }
 .ks-col-shipment a { font-weight: 600; }
 .ks-col-shipment .ks-mini { display: block; color: #646970; font-size: 12px; }
+
+.ks-col-shipment .ks-col-create { display: inline-block; margin: 2px 0 4px; }
+#ks-order .ks-checks label { display: inline-block; margin: 0 14px 6px 0; }
+#ks-order .ks-instructions label { display: block; margin: 0 0 4px; }

@@ -25,6 +25,8 @@ src/Carrier/Econt/EcontCarrier       калкулация, създаване, �
 src/Carrier/Econt/EcontShippingMethod  WC метод за доставка: една ставка с цена по избрания вид + глобални настройки
 src/Rest/EcontSearchController  публични REST маршрути за търсене (kanelov-shipping/v1/econt/*)
 src/Admin/SettingsActions       бутони: тест, обнови профила, обнови офисите и Еконтоматите
+src/Admin/OrdersList            колона „Еконт“ с бутон за товарителница, масово създаване по дата
+src/Admin/OrderMetabox          кутия „Еконт“ в поръчката: доставка, опции, създай/изтрий/PDF/проследи
 src/Order/OrderMeta             мета ключове в поръчката (_ks_delivery, _ks_shipment)
 tests/                          PHPUnit за чистата логика
 ```

@@ -8,13 +8,15 @@ use Kanelov\Shipping\Plugin;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Колона „Еконт“ в списъка с поръчки и масово действие „Създай товарителници“.
+ * Колона „Еконт“ в списъка с поръчки (с бутон за бърза товарителница) и масово действие „Създай товарителници“
+ * (по дата на поръчката).
  * Регистрира се и за класическия екран (shop_order), и за HPOS (wc-orders).
  */
 final class OrdersList {
 
 	const COLUMN = 'ks_shipment';
 	const BULK   = 'ks_create_labels';
+	const SINGLE = 'ks_create_label';
 
 	public function register(): void {
 		foreach ( [ 'manage_edit-shop_order_columns', 'manage_woocommerce_page_wc-orders_columns' ] as $hook ) {
@@ -31,6 +33,12 @@ final class OrdersList {
 		}
 		add_action( 'admin_notices', [ $this, 'bulk_notice' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'assets' ] );
+		add_action( 'admin_post_' . self::SINGLE, [ $this, 'handle_single' ] );
+	}
+
+	/** Линк за бърза товарителница от списъка (със стандартните настройки). */
+	public static function single_url( int $order_id ): string {
+		return wp_nonce_url( admin_url( 'admin-post.php?action=' . self::SINGLE . '&order=' . $order_id ), self::SINGLE . '_' . $order_id );
 	}
 
 	public function assets(): void {
@@ -86,7 +94,12 @@ final class OrdersList {
 				! empty( $shipment['status'] ) ? '<span class="ks-mini">' . esc_html( $shipment['status'] ) . '</span>' : ''
 			);
 		} else {
-			echo '<span class="ks-mini">' . esc_html__( 'без товарителница', 'kanelov-shipping' ) . '</span>';
+			printf(
+				'<a class="button button-small ks-col-create" href="%s" title="%s">%s</a>',
+				esc_url( self::single_url( $order->get_id() ) ),
+				esc_attr__( 'Създава товарителница със стандартните настройки. За тегло, пакети или други опции отворете поръчката.', 'kanelov-shipping' ),
+				esc_html__( 'Създай товарителница', 'kanelov-shipping' )
+			);
 		}
 		if ( $carrier ) {
 			echo '<span class="ks-mini">' . esc_html( $carrier->format_delivery( $delivery ) ) . '</span>';
@@ -106,11 +119,18 @@ final class OrdersList {
 		$carrier = Plugin::instance()->carriers()->get( EcontCarrier::ID );
 		$ok      = 0;
 		$fail    = [];
+
+		// По дата на поръчката (най-старата първа), за да излизат товарителниците подред в Еконт.
+		$orders = [];
 		foreach ( array_slice( $ids, 0, 50 ) as $id ) {
 			$order = wc_get_order( (int) $id );
-			if ( ! $order ) {
-				continue;
+			if ( $order ) {
+				$orders[] = $order;
 			}
+		}
+		usort( $orders, static fn( \WC_Order $a, \WC_Order $b ) => ( $a->get_date_created()?->getTimestamp() ?? 0 ) <=> ( $b->get_date_created()?->getTimestamp() ?? 0 ) ?: $a->get_id() <=> $b->get_id() );
+
+		foreach ( $orders as $order ) {
 			if ( OrderMeta::get_delivery( $order )->is_empty() ) {
 				$fail[] = sprintf( '#%s: %s', $order->get_order_number(), __( 'не е с доставка Еконт', 'kanelov-shipping' ) );
 				continue;
@@ -127,6 +147,34 @@ final class OrdersList {
 		}
 		set_transient( 'ks_bulk_notice_' . get_current_user_id(), [ 'ok' => $ok, 'fail' => $fail ], 120 );
 		return $redirect;
+	}
+
+	/** Единична товарителница от списъка: admin-post с nonce, после обратно към списъка. */
+	public function handle_single(): void {
+		$order_id = (int) ( $_GET['order'] ?? 0 ); // phpcs:ignore WordPress.Security.NonceVerification -- проверява се по-долу.
+		check_admin_referer( self::SINGLE . '_' . $order_id );
+		if ( ! current_user_can( 'edit_shop_orders' ) ) {
+			wp_die( esc_html__( 'Нямате права.', 'kanelov-shipping' ) );
+		}
+		$order = wc_get_order( $order_id );
+		$ok    = 0;
+		$fail  = [];
+		if ( ! $order ) {
+			$fail[] = __( 'Поръчката не е намерена.', 'kanelov-shipping' );
+		} elseif ( OrderMeta::get_delivery( $order )->is_empty() ) {
+			$fail[] = sprintf( '#%s: %s', $order->get_order_number(), __( 'не е с доставка Еконт', 'kanelov-shipping' ) );
+		} else {
+			$result = Plugin::instance()->carriers()->get( EcontCarrier::ID )->create_label( $order );
+			if ( $result->success ) {
+				$ok = 1;
+			} else {
+				$fail[] = sprintf( '#%s: %s', $order->get_order_number(), implode( '; ', $result->errors ) );
+			}
+		}
+		set_transient( 'ks_bulk_notice_' . get_current_user_id(), [ 'ok' => $ok, 'fail' => $fail ], 120 );
+		$back = wp_get_referer() ?: admin_url( 'admin.php?page=wc-orders' );
+		wp_safe_redirect( $back );
+		exit;
 	}
 
 	public function bulk_notice(): void {

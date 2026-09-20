@@ -3,6 +3,7 @@ namespace Kanelov\Shipping\Admin;
 
 use Kanelov\Shipping\Carrier\DeliveryData;
 use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
+use Kanelov\Shipping\Carrier\Econt\EcontProfile;
 use Kanelov\Shipping\Carrier\Econt\EcontSettings;
 use Kanelov\Shipping\Checkout\DeliveryFormView;
 use Kanelov\Shipping\Order\OrderMeta;
@@ -122,10 +123,34 @@ final class OrderMetabox {
 						</select></label></p>
 				</div>
 				<p class="form-row"><label><?php esc_html_e( 'Описание на пратката', 'kanelov-shipping' ); ?><input type="text" name="ks_opt_description" placeholder="<?php esc_attr_e( 'по подразбиране: номер на поръчка + продукти', 'kanelov-shipping' ); ?>"></label></p>
+				<div class="ks-grid">
+					<p class="form-row"><label><?php esc_html_e( 'Преди плащане на НП', 'kanelov-shipping' ); ?>
+						<select name="ks_opt_pay_after">
+							<option value="" <?php selected( $settings->pay_after(), '' ); ?>><?php esc_html_e( 'Без преглед', 'kanelov-shipping' ); ?></option>
+							<option value="accept" <?php selected( $settings->pay_after(), 'accept' ); ?>><?php esc_html_e( 'Преглед на пратката', 'kanelov-shipping' ); ?></option>
+							<option value="test" <?php selected( $settings->pay_after(), 'test' ); ?>><?php esc_html_e( 'Тест на стоката', 'kanelov-shipping' ); ?></option>
+						</select></label></p>
+					<p class="form-row"><label><?php esc_html_e( 'Ако е почивен ден', 'kanelov-shipping' ); ?>
+						<?php $holiday = $delivery->delivery_day ?: $settings->holiday_delivery_day(); ?>
+						<select name="ks_opt_holiday">
+							<option value="workday" <?php selected( $holiday, 'workday' ); ?>><?php esc_html_e( 'Първи работен ден', 'kanelov-shipping' ); ?></option>
+							<option value="halfday" <?php selected( $holiday, 'halfday' ); ?>><?php esc_html_e( 'Събота', 'kanelov-shipping' ); ?></option>
+						</select></label></p>
+					<p class="form-row"><label><?php esc_html_e( 'Номер на фактура', 'kanelov-shipping' ); ?><input type="text" name="ks_opt_invoice_num" value="<?php echo esc_attr( $settings->invoice_num_from_order() ? $order->get_order_number() : '' ); ?>"></label></p>
+				</div>
 				<p class="form-row ks-checks">
 					<label><input type="checkbox" name="ks_opt_sms_notification" value="1" <?php checked( $settings->sms_notification() ); ?>> <?php esc_html_e( 'SMS до получателя', 'kanelov-shipping' ); ?></label>
 					<label><input type="checkbox" name="ks_opt_declared" value="1" <?php checked( $settings->declared_value_threshold() > 0 && (float) $order->get_total() >= $settings->declared_value_threshold() ); ?>> <?php esc_html_e( 'Обявена стойност', 'kanelov-shipping' ); ?></label>
+					<label><input type="checkbox" name="ks_opt_packing_list" value="1" <?php checked( $settings->packing_list() ); ?>> <?php esc_html_e( 'Опис на стоките', 'kanelov-shipping' ); ?></label>
 				</p>
+				<?php $instr = ( new EcontProfile( $settings ) )->instruction_choices(); ?>
+				<?php if ( $instr ) : ?>
+					<p class="form-row ks-instructions"><strong><?php esc_html_e( 'Инструкции към куриера', 'kanelov-shipping' ); ?></strong>
+						<?php foreach ( $instr as $id => $name ) : ?>
+							<label><input type="checkbox" name="ks_opt_instructions[]" value="<?php echo esc_attr( $id ); ?>" <?php checked( in_array( (int) $id, $settings->instruction_ids(), true ) ); ?>> <?php echo esc_html( $name ); ?></label>
+						<?php endforeach; ?>
+					</p>
+				<?php endif; ?>
 				<p class="ks-actions">
 					<button type="button" class="button ks-do" data-do="calculate"><?php esc_html_e( 'Изчисли цена', 'kanelov-shipping' ); ?></button>
 					<button type="button" class="button button-primary ks-do" data-do="create"><?php esc_html_e( 'Създай товарителница', 'kanelov-shipping' ); ?></button>
@@ -234,6 +259,11 @@ final class OrderMetabox {
 			'description'      => sanitize_text_field( (string) ( $fields['ks_opt_description'] ?? '' ) ),
 			'sms_notification' => ! empty( $fields['ks_opt_sms_notification'] ),
 			'declared_value'   => ! empty( $fields['ks_opt_declared'] ) ? (float) $order->get_total() : 0,
+			'packing_list'     => ! empty( $fields['ks_opt_packing_list'] ),
+			'invoice_num'      => sanitize_text_field( (string) ( $fields['ks_opt_invoice_num'] ?? '' ) ),
+			'pay_after'        => in_array( $fields['ks_opt_pay_after'] ?? '', [ 'accept', 'test' ], true ) ? $fields['ks_opt_pay_after'] : '',
+			'holiday_delivery_day' => ( $fields['ks_opt_holiday'] ?? '' ) === 'halfday' ? 'halfday' : 'workday',
+			'instructions'     => ( new EcontProfile( $settings ) )->instructions_for( array_map( 'intval', (array) ( $fields['ks_opt_instructions'] ?? [] ) ) ),
 		];
 		$send_from = (string) ( $fields['ks_opt_send_from'] ?? $settings->send_from() );
 		$opt['send_from'] = in_array( $send_from, [ 'office', 'address' ], true ) ? $send_from : $settings->send_from();
