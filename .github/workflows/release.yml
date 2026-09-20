@@ -1,0 +1,31 @@
+name: Release
+
+# При таг vX.Y.Z: строи zip без dev файлове (bin-build.sh) и го прикача към GitHub Release.
+# Сайтовете с плъгина виждат новата версия в Плъгини > Обнови (src/Updater.php).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check that the tag matches the plugin version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER=$(grep -m1 "Version:" kanelov-shipping.php | sed 's/.*Version: *//' | tr -d ' \r')
+          if [ "$TAG" != "$VER" ]; then echo "Tag $TAG != plugin version $VER"; exit 1; fi
+
+      - name: Build zip
+        run: bash bin-build.sh dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/kanelov-shipping-*.zip
+          generate_release_notes: true

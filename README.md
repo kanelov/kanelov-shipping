@@ -14,6 +14,7 @@ WooCommerce плъгин за доставка с Еконт (офис, Екон
 kanelov-shipping.php            зареждане, HPOS/Blocks декларации
 src/Plugin.php                  свързване на компонентите
 src/Installer.php               таблици за градове и офиси
+src/Updater.php                 обновления от GitHub Releases (бутон „Обнови“ в Плъгини)
 src/Carrier/                    интерфейс за куриери, DeliveryData, резултати
 src/Carrier/Econt/EcontApi           HTTP клиент за JSON API (Basic auth, TLS проверка)
 src/Carrier/Econt/EcontSettings      четене на настройките

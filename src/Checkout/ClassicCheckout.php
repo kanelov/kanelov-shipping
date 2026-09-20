@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Класически чекаут (шорткод [woocommerce_checkout]).
  * Еконт е една ставка в прегледа на поръчката. Видът доставка (офис, Еконтомат, адрес) клиентът избира с икони
- * в блока „Доставка с Еконт“ под данните си; изборът се пази в сесията, влиза в пакета за доставка и определя
+ * в блока „Доставка с Еконт“ в лявата колона, на мястото на скритите адресни полета; изборът се пази в сесията, влиза в пакета за доставка и определя
  * цената на ставката. Стандартните адресни полета се скриват и стават незадължителни; след поръчка адресът за
  * доставка в WooCommerce се попълва с четим текст, за да се вижда навсякъде.
  */
@@ -30,7 +30,7 @@ final class ClassicCheckout {
 		add_filter( 'woocommerce_cart_shipping_packages', [ $this, 'add_type_to_packages' ] );
 		add_action( 'woocommerce_checkout_update_order_review', [ $this, 'remember_type_from_review' ] );
 		add_filter( 'woocommerce_update_order_review_fragments', [ $this, 'fragments' ] );
-		add_action( 'woocommerce_checkout_after_customer_details', [ $this, 'render_fields' ] );
+		add_action( 'woocommerce_after_checkout_billing_form', [ $this, 'render_fields' ] ); // в лявата колона, на мястото на скрития адрес
 		add_action( 'woocommerce_checkout_process', [ $this, 'validate' ] );
 		add_action( 'woocommerce_checkout_create_order', [ $this, 'save_to_order' ], 10, 2 );
 		add_filter( 'woocommerce_available_payment_gateways', [ $this, 'filter_gateways' ] );

@@ -50,6 +50,7 @@ final class Plugin {
 		( new TrackingLink() )->register();
 
 		if ( is_admin() ) {
+			( new Updater() )->register();
 			( new SettingsActions() )->register();
 			( new OrderMetabox() )->register();
 			( new OrdersList() )->register();
