@@ -1,10 +1,13 @@
 name: Release
 
-# При таг vX.Y.Z: строи zip без dev файлове (bin-build.sh) и го прикача към GitHub Release.
+# Създава GitHub Release със zip на плъгина (bin-build.sh, без dev файлове).
+# Стартира се при таг vX.Y.Z или ръчно (Actions > Release > Run workflow); при ръчно стартиране
+# тагът се взима от версията в kanelov-shipping.php и се създава от самия release.
 # Сайтовете с плъгина виждат новата версия в Плъгини > Обнови (src/Updater.php).
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,11 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check that the tag matches the plugin version
+      - name: Resolve version and tag
+        id: ver
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
           VER=$(grep -m1 "Version:" kanelov-shipping.php | sed 's/.*Version: *//' | tr -d ' \r')
-          if [ "$TAG" != "$VER" ]; then echo "Tag $TAG != plugin version $VER"; exit 1; fi
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$VER" ]; then
+            echo "Tag ${GITHUB_REF_NAME} != plugin version $VER"; exit 1
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VER" >> "$GITHUB_OUTPUT"
 
       - name: Build zip
         run: bash bin-build.sh dist
@@ -27,5 +34,7 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.version }}
           files: dist/kanelov-shipping-*.zip
           generate_release_notes: true
