@@ -57,7 +57,7 @@
 			var officeInput = root.querySelector('.ks-office'), sel = root.querySelector('.ks-office-selected');
 			if (saved.office_code) { officeInput.value = saved.office_name; sel.hidden = false; sel.textContent = '✓ ' + saved.office_name; }
 		}
-		form = KSDeliveryForm.mount(root, { rest: cfg.rest, i18n: cfg.i18n, getType: function () { return typeInput.value; }, onChange: remember });
+		form = KSDeliveryForm.mount(root, { rest: cfg.rest, i18n: cfg.i18n, map: cfg.map, getType: function () { return typeInput.value; }, onChange: remember });
 		applyType();
 	}
 	$(document.body).on('updated_checkout', function () { init(); applyType(); });

@@ -134,6 +134,58 @@
 			});
 		}
 
+		/* Карта в <dialog>: зарежда Leaflet при първо отваряне, маркери за офисите в избрания град. */
+		var mapBtn = root.querySelector('.ks-map-open');
+		if (mapBtn && opts.map) {
+			var dialog = null, map = null, layer = null;
+			function loadLeaflet() {
+				if (window.L) return Promise.resolve();
+				return new Promise(function (resolve, reject) {
+					var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = opts.map.css; document.head.appendChild(css);
+					var js = document.createElement('script'); js.src = opts.map.js; js.onload = resolve; js.onerror = reject; document.head.appendChild(js);
+				});
+			}
+			function ensureDialog() {
+				if (dialog) return dialog;
+				dialog = document.createElement('dialog'); dialog.className = 'ks-map-dialog';
+				dialog.innerHTML = '<div class="ks-map-dialog__head"><span></span><button type="button" class="ks-map-dialog__close" aria-label="' + (i18n.close || '') + '">×</button></div><div class="ks-map-dialog__map"></div>';
+				dialog.querySelector('.ks-map-dialog__head span').textContent = i18n.mapTitle || '';
+				dialog.querySelector('.ks-map-dialog__close').addEventListener('click', function () { dialog.close(); });
+				dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
+				document.body.appendChild(dialog);
+				return dialog;
+			}
+			mapBtn.addEventListener('click', function () {
+				if (!els.cityId.value) { window.alert(i18n.chooseCity); return; }
+				var type = opts.getType() === 'locker' ? 'locker' : 'office';
+				mapBtn.disabled = true;
+				Promise.all([loadLeaflet(), api('offices', { city_id: els.cityId.value, type: type })]).then(function (r) {
+					mapBtn.disabled = false;
+					var offices = r[1].filter(function (o) { return o.lat && o.lng; });
+					if (!offices.length) { window.alert(i18n.noCoords); return; }
+					var d = ensureDialog(); d.showModal();
+					var el = d.querySelector('.ks-map-dialog__map');
+					if (!map) {
+						map = window.L.map(el, { scrollWheelZoom: true });
+						window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+					}
+					if (layer) layer.remove();
+					layer = window.L.featureGroup().addTo(map);
+					offices.forEach(function (o) {
+						var m = window.L.marker([o.lat, o.lng]).addTo(layer);
+						var popup = document.createElement('div'); popup.className = 'ks-map-popup';
+						var b = document.createElement('b'); b.textContent = o.name; popup.appendChild(b);
+						popup.appendChild(document.createTextNode(o.address + (o.hours ? ' · ' + o.hours : '')));
+						var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'button'; btn.textContent = i18n.choose || 'OK';
+						btn.addEventListener('click', function () { setOffice({ code: o.code, label: o.label, hours: o.hours }); d.close(); });
+						popup.appendChild(btn);
+						m.bindPopup(popup);
+					});
+					setTimeout(function () { map.invalidateSize(); map.fitBounds(layer.getBounds().pad(0.2)); }, 50);
+				}).catch(function () { mapBtn.disabled = false; });
+			});
+		}
+
 		return {
 			applyType: function (type) {
 				var toOffice = type !== 'door';

@@ -15,7 +15,7 @@
 		var root = box.querySelector('#ks-delivery');
 		if (!root) return;
 		var typeSel = root.querySelector('.ks-type');
-		var form = KSDeliveryForm.mount(root, { rest: cfg.rest, i18n: cfg.i18n, getType: function () { return typeSel.value; } });
+		var form = KSDeliveryForm.mount(root, { rest: cfg.rest, i18n: cfg.i18n, map: cfg.map, getType: function () { return typeSel.value; } });
 		form.applyType(typeSel.value);
 		typeSel.addEventListener('change', function () { form.applyType(typeSel.value); });
 	}

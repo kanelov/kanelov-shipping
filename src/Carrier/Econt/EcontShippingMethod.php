@@ -54,6 +54,9 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 
 	public function calculate_shipping( $package = [] ): void {
 		$settings = new EcontSettings();
+		if ( $settings->admins_only() && ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
 		$subtotal = 0.0;
 		$weight   = 0.0;
 		foreach ( (array) ( $package['contents'] ?? [] ) as $item ) {
@@ -164,6 +167,19 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 			'actions'  => [
 				'title' => __( 'Действия', 'kanelov-shipping' ),
 				'type'  => 'ks_actions',
+			],
+			'admins_only' => [
+				'title'       => __( 'Тестов режим', 'kanelov-shipping' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Методът Еконт се вижда в чекаута само за администратори на магазина', 'kanelov-shipping' ),
+				'default'     => 'no',
+				'description' => __( 'Удобно за тест на жив сайт: клиентите не виждат Еконт, докато не изключите режима.', 'kanelov-shipping' ),
+			],
+			'map_enabled' => [
+				'title'   => __( 'Карта на офисите', 'kanelov-shipping' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Бутон „Покажи на карта“ при избора на офис/Еконтомат (отваря се в прозорец)', 'kanelov-shipping' ),
+				'default' => 'yes',
 			],
 		];
 

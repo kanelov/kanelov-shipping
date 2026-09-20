@@ -2,6 +2,7 @@
 namespace Kanelov\Shipping\Checkout;
 
 use Kanelov\Shipping\Carrier\DeliveryData;
+use Kanelov\Shipping\Carrier\Econt\EcontSettings;
 use Kanelov\Shipping\Carrier\Econt\EcontShippingMethod;
 use Kanelov\Shipping\Rest\EcontSearchController;
 
@@ -15,9 +16,14 @@ final class DeliveryFormView {
 	const PREFIX = 'ks_';
 
 	public static function js_config(): array {
+		$settings = new EcontSettings();
 		return [
 			'rest'     => esc_url_raw( rest_url( EcontSearchController::NS . '/econt/' ) ),
 			'methodId' => EcontShippingMethod::ID,
+			'map'      => $settings->map_enabled() ? [
+				'js'  => KS_URL . 'assets/vendor/leaflet/leaflet.js',
+				'css' => KS_URL . 'assets/vendor/leaflet/leaflet.css',
+			] : null,
 			'i18n'     => [
 				'noResults'    => __( 'Няма резултати', 'kanelov-shipping' ),
 				'loading'      => __( 'Зареждане…', 'kanelov-shipping' ),
@@ -29,6 +35,10 @@ final class DeliveryFormView {
 				'geoError'     => __( 'Не можахме да определим местоположението ви.', 'kanelov-shipping' ),
 				'nearest'      => __( 'Най-близки до вас', 'kanelov-shipping' ),
 				'km'           => __( 'км', 'kanelov-shipping' ),
+				'choose'       => __( 'Избери', 'kanelov-shipping' ),
+				'close'        => __( 'Затвори', 'kanelov-shipping' ),
+				'mapTitle'     => __( 'Офиси и Еконтомати', 'kanelov-shipping' ),
+				'noCoords'     => __( 'Няма офиси с координати за това населено място.', 'kanelov-shipping' ),
 			],
 		];
 	}
@@ -91,6 +101,9 @@ final class DeliveryFormView {
 			], $saved->office_name );
 			?>
 			<p class="ks-office-selected" <?php echo $saved->office_code ? '' : 'hidden'; ?>><?php echo $saved->office_code ? '✓ ' . esc_html( $saved->office_name ) : ''; ?></p>
+			<?php if ( ( new EcontSettings() )->map_enabled() ) : ?>
+				<button type="button" class="button ks-map-open"><?php esc_html_e( 'Покажи на карта', 'kanelov-shipping' ); ?></button>
+			<?php endif; ?>
 		</div>
 
 		<div class="ks-section ks-section--door" hidden>

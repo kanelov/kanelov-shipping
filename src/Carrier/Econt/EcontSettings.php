@@ -118,6 +118,15 @@ final class EcontSettings {
 		return (string) $this->get( 'shipment_type', 'pack' );
 	}
 
+	/** Тестов режим: методът се показва само на потребители с право manage_woocommerce. */
+	public function admins_only(): bool {
+		return $this->bool( 'admins_only', false );
+	}
+
+	public function map_enabled(): bool {
+		return $this->bool( 'map_enabled', true );
+	}
+
 	// Ограничения за Еконтомат.
 	public function locker_max_weight(): float {
 		return $this->float( 'locker_max_weight', 20 );
