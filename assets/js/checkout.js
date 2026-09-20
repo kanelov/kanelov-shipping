@@ -31,7 +31,6 @@
 			if (!(id in requiredMemo)) requiredMemo[id] = row.classList.contains('validate-required');
 			if (!requiredMemo[id]) return;
 			row.classList.toggle('validate-required', !econt);
-			var input = row.querySelector('input, select'); if (input) input.required = !econt;
 		});
 	}
 	function applyType() {

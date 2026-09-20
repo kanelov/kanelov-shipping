@@ -164,8 +164,7 @@ final class OrderMetabox {
 		$do      = sanitize_key( $_POST['do'] ?? '' );
 		$carrier = Plugin::instance()->carriers()->get( EcontCarrier::ID );
 		$fields  = [];
-		parse_str( (string) wp_unslash( $_POST['fields'] ?? '' ), $fields );
-		$fields = wp_unslash( $fields );
+		parse_str( (string) ( $_POST['fields'] ?? '' ), $fields ); // стойностите остават със slash-ове на WP; from_request ги маха веднъж
 
 		$message = '';
 		$errors  = [];

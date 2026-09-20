@@ -106,12 +106,19 @@ final class EcontLabelBuilder {
 			$label['orderNumber'] = (string) $in['order_number'];
 		}
 
+		// Кой плаща доставката. Получателят плаща на куриера само ако има конкретна сума > 0;
+		// метод без сума означава за Еконт „получателят плаща цялата услуга“.
+		$receiver_amount = ! empty( $opt['receiver_pays_shipping'] ) && isset( $opt['receiver_amount'] ) && is_numeric( $opt['receiver_amount'] )
+			? round( (float) $opt['receiver_amount'], 2 )
+			: 0.0;
+
 		// Услуги.
 		$services = [];
 		$currency = (string) ( $in['currency'] ?? 'EUR' );
 		if ( ! empty( $in['is_cod'] ) ) {
+			// Ако доставката се събира отделно от куриера, тя не влиза и в наложения платеж.
 			$services['cdType']     = 'get';
-			$services['cdAmount']   = round( (float) ( $in['order_total'] ?? 0 ), 2 );
+			$services['cdAmount']   = round( max( 0, (float) ( $in['order_total'] ?? 0 ) - $receiver_amount ), 2 );
 			$services['cdCurrency'] = $currency;
 			if ( ! empty( $opt['cd_pay_options_template'] ) ) {
 				$services['cdPayOptionsTemplate'] = (string) $opt['cd_pay_options_template'];
@@ -138,11 +145,9 @@ final class EcontLabelBuilder {
 		$label['paymentSenderMethod'] = in_array( $opt['sender_payment_method'] ?? '', [ 'cash', 'credit', 'bonus', 'voucher' ], true )
 			? $opt['sender_payment_method']
 			: 'cash';
-		if ( ! empty( $opt['receiver_pays_shipping'] ) ) {
+		if ( $receiver_amount > 0 ) {
 			$label['paymentReceiverMethod'] = 'cash';
-			if ( isset( $opt['receiver_amount'] ) && is_numeric( $opt['receiver_amount'] ) && (float) $opt['receiver_amount'] > 0 ) {
-				$label['paymentReceiverAmount'] = round( (float) $opt['receiver_amount'], 2 );
-			}
+			$label['paymentReceiverAmount'] = $receiver_amount;
 		}
 
 		$label['holidayDeliveryDay'] = 'workday';

@@ -34,7 +34,7 @@ final class ClassicCheckout {
 
 	/** Избраният в сесията тип доставка с Еконт или null, ако е избран друг куриер. */
 	public static function chosen_type(): ?string {
-		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+		if ( ! function_exists( 'WC' ) || ! WC()->session || ! WC()->cart || ! WC()->cart->needs_shipping() ) {
 			return null;
 		}
 		$chosen = (array) WC()->session->get( 'chosen_shipping_methods', [] );
@@ -161,12 +161,16 @@ final class ClassicCheckout {
 	}
 
 	/** В имейлите и „Моят акаунт“ под метода за доставка се показва избраният офис/адрес. */
-	public function shipping_to_display( string $text, \WC_Order $order ): string {
+	public function shipping_to_display( $text, $order ): string {
+		$text = (string) $text;
+		if ( ! $order instanceof \WC_Order ) {
+			return $text;
+		}
 		$delivery = OrderMeta::get_delivery( $order );
 		if ( $delivery->is_empty() ) {
 			return $text;
 		}
 		$carrier = Plugin::instance()->carriers()->get( $delivery->carrier );
-		return $carrier ? $text . '<br><small>' . esc_html( $carrier->format_delivery( $delivery ) ) . '</small>' : $text;
+		return $carrier ? $text . ' (' . esc_html( $carrier->format_delivery( $delivery ) ) . ')' : $text;
 	}
 }

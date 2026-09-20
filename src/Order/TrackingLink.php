@@ -32,8 +32,8 @@ final class TrackingLink {
 		);
 	}
 
-	public function email( \WC_Order $order, bool $sent_to_admin, bool $plain_text, $email ): void {
-		if ( $sent_to_admin ) {
+	public function email( $order, $sent_to_admin = false, $plain_text = false, $email = null ): void {
+		if ( $sent_to_admin || ! $order instanceof \WC_Order ) {
 			return;
 		}
 		$shipment = OrderMeta::get_shipment( $order );

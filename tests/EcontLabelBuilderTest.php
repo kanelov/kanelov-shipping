@@ -121,10 +121,19 @@ final class EcontLabelBuilderTest extends TestCase {
 		$this->assertSame( '4000-APS', $label['receiverOfficeCode'] );
 	}
 
-	public function test_receiver_pays_shipping_adds_receiver_amount(): void {
+	public function test_receiver_pays_shipping_moves_shipping_out_of_cod(): void {
 		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [ 'receiver_pays_shipping' => true, 'receiver_amount' => 3.5 ] ] ) );
 		$this->assertSame( 'cash', $label['paymentReceiverMethod'] );
 		$this->assertSame( 3.5, $label['paymentReceiverAmount'] );
+		// 131.50 общо, от които 3.50 доставка се събира отделно: НП = 128.00, не 131.50.
+		$this->assertSame( 128.0, $label['services']['cdAmount'] );
+	}
+
+	public function test_free_shipping_with_receiver_pays_option_sends_no_receiver_method(): void {
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [ 'receiver_pays_shipping' => true, 'receiver_amount' => 0 ] ] ) );
+		$this->assertArrayNotHasKey( 'paymentReceiverMethod', $label );
+		$this->assertArrayNotHasKey( 'paymentReceiverAmount', $label );
+		$this->assertSame( 131.5, $label['services']['cdAmount'] );
 	}
 
 	public function test_sender_address_used_when_no_office(): void {

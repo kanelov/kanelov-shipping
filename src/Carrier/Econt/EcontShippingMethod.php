@@ -138,7 +138,8 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 			];
 		}
 
-		$this->form_fields = $this->global_fields();
+		// Глобалните полета (със заявки към базата и профила) са нужни само в админа.
+		$this->form_fields = is_admin() ? $this->global_fields() : [];
 	}
 
 	private function global_fields(): array {
@@ -219,6 +220,8 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 					'type'        => 'select',
 					'default'     => 'credit',
 					'options'     => [ 'credit' => __( 'По споразумение (кредит)', 'kanelov-shipping' ), 'cash' => __( 'В брой при предаване', 'kanelov-shipping' ) ],
+					'description' => __( 'Съвпада с EcontSettings::sender_payment_method() по подразбиране.', 'kanelov-shipping' ),
+					'desc_tip'    => true,
 				],
 				'receiver_pays_shipping' => [
 					'title'       => __( 'Получателят плаща доставката на куриера', 'kanelov-shipping' ),

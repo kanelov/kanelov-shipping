@@ -78,7 +78,7 @@ final class EcontSettings {
 	}
 
 	public function sender_payment_method(): string {
-		return (string) $this->get( 'sender_payment_method', 'cash' ); // cash | credit
+		return (string) $this->get( 'sender_payment_method', 'credit' ); // credit | cash
 	}
 
 	public function receiver_pays_shipping(): bool {

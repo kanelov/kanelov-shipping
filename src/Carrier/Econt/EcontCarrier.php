@@ -53,8 +53,15 @@ final class EcontCarrier implements CarrierInterface {
 				$errors[] = $d->type === DeliveryData::TYPE_LOCKER
 					? __( 'Изберете Еконтомат.', 'kanelov-shipping' )
 					: __( 'Изберете офис на Еконт.', 'kanelov-shipping' );
-			} elseif ( ! $nomenclature->get_office( $d->office_code ) ) {
-				$errors[] = __( 'Избраният офис не е намерен. Изберете отново.', 'kanelov-shipping' );
+			} else {
+				$office = $nomenclature->get_office( $d->office_code );
+				if ( ! $office ) {
+					$errors[] = __( 'Избраният офис не е намерен. Изберете отново.', 'kanelov-shipping' );
+				} elseif ( $office['is_aps'] !== ( $d->type === DeliveryData::TYPE_LOCKER ) ) {
+					$errors[] = $d->type === DeliveryData::TYPE_LOCKER
+						? __( 'Избраното място не е Еконтомат. Изберете Еконтомат.', 'kanelov-shipping' )
+						: __( 'Избраното място е Еконтомат, а доставката е до офис. Изберете офис.', 'kanelov-shipping' );
+				}
 			}
 		} else {
 			if ( $d->street === '' && $d->quarter === '' ) {
@@ -79,10 +86,15 @@ final class EcontCarrier implements CarrierInterface {
 		}
 		$parts = array_filter( [
 			$d->quarter !== '' ? 'кв. ' . $d->quarter : '',
-			$d->street !== '' ? 'ул. ' . $d->street . ( $d->street_num !== '' ? ' ' . $d->street_num : '' ) : '',
+			$d->street !== '' ? self::street_prefix( $d->street ) . $d->street . ( $d->street_num !== '' ? ' ' . $d->street_num : '' ) : '',
 			EcontLabelBuilder::compose_other( $d ),
 		] );
 		return trim( $d->city_name . ( $d->post_code ? ' ' . $d->post_code : '' ) . ', ' . implode( ', ', $parts ), ', ' );
+	}
+
+	/** „ул.“ се добавя само ако улицата вече не започва с тип (бул., пл., ж.к. …). */
+	private static function street_prefix( string $street ): string {
+		return preg_match( '/^(ул|бул|пл|ж\.к|кв|алея|шосе|път|м-ст|местност)\.?\s/ui', $street ) ? '' : 'ул. ';
 	}
 
 	/** Събира всичко нужно за EcontLabelBuilder от поръчката и настройките. */
@@ -149,7 +161,7 @@ final class EcontCarrier implements CarrierInterface {
 				'invoice_before_pay_cd'   => $settings->invoice_before_pay_cd(),
 				'sender_payment_method'   => $settings->sender_payment_method(),
 				'receiver_pays_shipping'  => $settings->receiver_pays_shipping(),
-				'receiver_amount'         => (float) $order->get_shipping_total(),
+				'receiver_amount'         => (float) $order->get_shipping_total() + (float) $order->get_shipping_tax(),
 				'shipment_type'           => $settings->shipment_type(),
 				'declared_value'          => $settings->declared_value_threshold() > 0 && (float) $order->get_total() >= $settings->declared_value_threshold() ? (float) $order->get_total() : 0,
 			], $options ),

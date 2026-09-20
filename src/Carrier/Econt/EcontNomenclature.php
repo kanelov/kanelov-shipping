@@ -147,7 +147,7 @@ final class EcontNomenclature {
 			if ( ! $id || $code === '' ) {
 				continue;
 			}
-			$hours  = trim( (string) ( $o['normalBusinessHoursFrom'] ?? '' ) . '-' . (string) ( $o['normalBusinessHoursTo'] ?? '' ), '-' );
+			$hours  = trim( self::format_hour( $o['normalBusinessHoursFrom'] ?? '' ) . '-' . self::format_hour( $o['normalBusinessHoursTo'] ?? '' ), '-' );
 			$rows[] = $wpdb->prepare(
 				'(%d,%s,%d,%d,%d,%s,%s,%s,%f,%f,%s,%s,%s)',
 				$id,
@@ -171,6 +171,14 @@ final class EcontNomenclature {
 		}
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE updated_at < %s", $now ) );
 		$this->refresh_city_flags();
+	}
+
+	/** Еконт връща работното време като timestamp в милисекунди; понякога като текст "09:00". */
+	public static function format_hour( $value ): string {
+		if ( is_numeric( $value ) && (float) $value > 100000 ) {
+			return wp_date( 'H:i', (int) ( (float) $value / 1000 ), new \DateTimeZone( 'Europe/Sofia' ) );
+		}
+		return trim( (string) $value );
 	}
 
 	private function refresh_city_flags(): void {
@@ -299,6 +307,9 @@ final class EcontNomenclature {
 		$list = get_transient( $key );
 		if ( is_array( $list ) ) {
 			return $list;
+		}
+		if ( ! $this->get_city( $city_id ) ) {
+			return []; // непознат град: не викаме Еконт с чужди id-та
 		}
 		$settings = new EcontSettings();
 		try {
