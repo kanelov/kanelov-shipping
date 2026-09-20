@@ -11,8 +11,6 @@
 #ks-order .ks-delivery--admin .form-row { margin: 0 0 10px; }
 #ks-order .ks-delivery--admin label { display: block; font-weight: 600; margin-bottom: 3px; }
 #ks-order .ks-delivery--admin input[type="text"], #ks-order .ks-delivery--admin select { width: 100%; }
-#ks-order .ks-delivery--admin .form-row-first, #ks-order .ks-delivery--admin .form-row-last { width: 48%; display: inline-block; vertical-align: top; }
-#ks-order .ks-delivery--admin .form-row-last { margin-left: 3%; }
 #ks-order .ks-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 #ks-order .ks-label-form label { display: block; font-weight: 600; }
 #ks-order .ks-label-form input[type="text"], #ks-order .ks-label-form input[type="number"], #ks-order .ks-label-form select { width: 100%; font-weight: 400; }

@@ -21,9 +21,9 @@ src/Carrier/Econt/EcontProfile       профил, адреси, споразу�
 src/Carrier/Econt/EcontNomenclature  градове/офиси в таблици, улици/квартали в transient, Action Scheduler
 src/Carrier/Econt/EcontLabelBuilder  чисто построяване на заявката createLabel (unit тестове)
 src/Carrier/Econt/EcontCarrier       калкулация, създаване, изтриване, проследяване
-src/Carrier/Econt/EcontShippingMethod  WC метод за доставка: ставки по вид + глобални настройки
+src/Carrier/Econt/EcontShippingMethod  WC метод за доставка: една ставка с цена по избрания вид + глобални настройки
 src/Rest/EcontSearchController  публични REST маршрути за търсене (kanelov-shipping/v1/econt/*)
-src/Admin/SettingsActions       бутони: тест, обнови профила, синхронизирай
+src/Admin/SettingsActions       бутони: тест, обнови профила, обнови офисите и Еконтоматите
 src/Order/OrderMeta             мета ключове в поръчката (_ks_delivery, _ks_shipment)
 tests/                          PHPUnit за чистата логика
 ```

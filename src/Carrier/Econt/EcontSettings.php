@@ -1,6 +1,8 @@
 <?php
 namespace Kanelov\Shipping\Carrier\Econt;
 
+use Kanelov\Shipping\Carrier\DeliveryData;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -125,6 +127,12 @@ final class EcontSettings {
 
 	public function map_enabled(): bool {
 		return $this->bool( 'map_enabled', true );
+	}
+
+	/** Вид доставка, избран предварително в чекаута; '' = клиентът избира сам. */
+	public function default_type(): string {
+		$type = (string) $this->get( 'default_type', DeliveryData::TYPE_OFFICE );
+		return in_array( $type, DeliveryData::TYPES, true ) ? $type : '';
 	}
 
 	// Ограничения за Еконтомат.

@@ -10,7 +10,7 @@ use Kanelov\Shipping\Carrier\Econt\EcontShippingMethod;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Бутоните в настройките: тест на връзката, обновяване на профила, синхронизация на номенклатурите.
+ * Бутоните в настройките: тест на връзката, обновяване на профила, обновяване на офисите и Еконтоматите.
  * Работят през admin-post с nonce и capability, без JavaScript.
  */
 final class SettingsActions {

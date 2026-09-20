@@ -1,14 +1,43 @@
 /* Kanelov Shipping – чекаут. Само структурни стилове; цветове и шрифтове идват от темата (Blocksy). */
 .ks-delivery { margin: 1.5em 0; }
-.ks-delivery[hidden] { display: none !important; }
-.ks-delivery__type { font-weight: 400; opacity: .7; font-size: .85em; }
+.ks-delivery[hidden], .ks-step[hidden], .ks-section[hidden] { display: none !important; }
+.ks-delivery .optional { display: none; }
 .ks-row--city { position: relative; }
 .ks-nearest { margin: 0 0 1em; font-size: .9em; }
-.ks-row--small { display: flex; gap: 12px; }
-.ks-row--small .form-row { flex: 1 1 0; }
-.ks-field-num { max-width: 30%; }
-.ks-section[hidden] { display: none; }
 .ks-office-selected { margin: -.5em 0 1em; font-size: .95em; }
+
+/* Стъпка 1: вид доставка с икони */
+.ks-type-picker { border: 0; padding: 0; margin: 0 0 1.25em; min-width: 0; }
+.ks-step__label { display: block; margin: 0 0 .5em; font-weight: 600; }
+.ks-type-picker__options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ks-type-option {
+	position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+	padding: 12px 8px; margin: 0; border: 2px solid var(--theme-border-color, #d1d5db); border-radius: 8px;
+	cursor: pointer; text-align: center; line-height: 1.25; transition: border-color .15s, box-shadow .15s;
+}
+.ks-type-option[hidden] { display: none; }
+.ks-type-option input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.ks-type-option__icon { display: block; opacity: .8; }
+.ks-type-option__title { font-weight: 600; }
+.ks-type-option__price { font-size: .85em; opacity: .75; }
+.ks-type-option:hover { border-color: var(--theme-palette-color-1, #e26b3a); }
+.ks-type-option.is-selected { border-color: var(--theme-palette-color-1, #e26b3a); box-shadow: 0 0 0 1px var(--theme-palette-color-1, #e26b3a); }
+.ks-type-option.is-selected .ks-type-option__icon { opacity: 1; color: var(--theme-palette-color-1, #e26b3a); }
+.ks-type-option:focus-within { outline: 2px solid var(--theme-palette-color-1, #e26b3a); outline-offset: 2px; }
+@media (max-width: 480px) {
+	.ks-type-picker__options { grid-template-columns: 1fr; }
+	.ks-type-option { flex-direction: row; text-align: left; padding: 10px 12px; }
+	.ks-type-option__price { margin-left: auto; }
+}
+
+/* Стъпка 3: адрес в решетка (без плаващи колони на темата) */
+.ks-section--door { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 12px; }
+.ks-section--door .form-row { float: none; clear: none; width: auto; margin-left: 0; margin-right: 0; min-width: 0; }
+.ks-section--door .form-row label { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-section--door .form-row input { width: 100%; }
+.ks-span-2 { grid-column: span 2; }
+.ks-span-4 { grid-column: span 4; }
+.ks-span-6 { grid-column: span 6; }
 
 /* Падащ списък за търсене */
 .ks-combo { position: relative; }

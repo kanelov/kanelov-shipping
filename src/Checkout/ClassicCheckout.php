@@ -12,18 +12,24 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Класически чекаут (шорткод [woocommerce_checkout]).
- * Клиентът попълва само имена, телефон и имейл. Когато е избрана ставка на Еконт, стандартните адресни
- * полета се скриват и стават незадължителни, а вместо тях се показват полетата за офис/Еконтомат/адрес.
- * След поръчка адресът за доставка в WooCommerce се попълва с четим текст, за да се вижда навсякъде.
+ * Еконт е една ставка в прегледа на поръчката. Видът доставка (офис, Еконтомат, адрес) клиентът избира с икони
+ * в блока „Доставка с Еконт“ под данните си; изборът се пази в сесията, влиза в пакета за доставка и определя
+ * цената на ставката. Стандартните адресни полета се скриват и стават незадължителни; след поръчка адресът за
+ * доставка в WooCommerce се попълва с четим текст, за да се вижда навсякъде.
  */
 final class ClassicCheckout {
 
 	/** Полета, които се скриват при доставка с Еконт. */
 	const HIDDEN_BILLING = [ 'billing_company', 'billing_country', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_postcode' ];
 
+	const SESSION_TYPE = 'ks_type';
+
 	public function register(): void {
 		add_filter( 'woocommerce_checkout_fields', [ $this, 'relax_address_fields' ], 100 );
 		add_filter( 'woocommerce_cart_needs_shipping_address', [ $this, 'needs_shipping_address' ] );
+		add_filter( 'woocommerce_cart_shipping_packages', [ $this, 'add_type_to_packages' ] );
+		add_action( 'woocommerce_checkout_update_order_review', [ $this, 'remember_type_from_review' ] );
+		add_filter( 'woocommerce_update_order_review_fragments', [ $this, 'fragments' ] );
 		add_action( 'woocommerce_checkout_after_customer_details', [ $this, 'render_fields' ] );
 		add_action( 'woocommerce_checkout_process', [ $this, 'validate' ] );
 		add_action( 'woocommerce_checkout_create_order', [ $this, 'save_to_order' ], 10, 2 );
@@ -32,23 +38,104 @@ final class ClassicCheckout {
 		add_filter( 'woocommerce_order_shipping_to_display', [ $this, 'shipping_to_display' ], 10, 2 );
 	}
 
-	/** Избраният в сесията тип доставка с Еконт или null, ако е избран друг куриер. */
-	public static function chosen_type(): ?string {
+	// Избор в сесията.
+
+	/** Дали в сесията е избрана ставката на Еконт. */
+	public static function is_econt_chosen(): bool {
 		if ( ! function_exists( 'WC' ) || ! WC()->session || ! WC()->cart || ! WC()->cart->needs_shipping() ) {
-			return null;
+			return false;
 		}
-		$chosen = (array) WC()->session->get( 'chosen_shipping_methods', [] );
-		foreach ( $chosen as $rate_id ) {
-			$type = EcontShippingMethod::type_from_rate_id( (string) $rate_id );
-			if ( $type ) {
-				return $type;
+		foreach ( (array) WC()->session->get( 'chosen_shipping_methods', [] ) as $rate_id ) {
+			if ( EcontShippingMethod::is_econt_rate( (string) $rate_id ) ) {
+				return true;
 			}
 		}
-		return null;
+		return false;
 	}
 
+	/**
+	 * Видът доставка, който клиентът иска: от сесията, иначе запомненият от профила, иначе този по подразбиране.
+	 * '' = още не е избран.
+	 */
+	public static function requested_type(): string {
+		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+			return '';
+		}
+		$type = WC()->session->get( self::SESSION_TYPE );
+		if ( is_string( $type ) && in_array( $type, DeliveryData::TYPES, true ) ) {
+			return $type;
+		}
+		if ( $type === null ) {
+			$saved = self::saved_delivery()->type;
+			return $saved !== '' ? $saved : ( new EcontSettings() )->default_type();
+		}
+		return '';
+	}
+
+	/** Избраният вид доставка с Еконт или null, ако е избран друг куриер (или няма избран вид). */
+	public static function chosen_type(): ?string {
+		if ( ! self::is_econt_chosen() ) {
+			return null;
+		}
+		return self::requested_type() ?: null;
+	}
+
+	private static function set_type( string $type ): void {
+		if ( WC()->session ) {
+			WC()->session->set( self::SESSION_TYPE, in_array( $type, DeliveryData::TYPES, true ) ? $type : '' );
+		}
+	}
+
+	/** Видът влиза в пакета: така хешът на пакета се сменя и ставката се преизчислява при смяна на вида. */
+	public function add_type_to_packages( array $packages ): array {
+		$type = self::requested_type();
+		foreach ( $packages as $i => $package ) {
+			$packages[ $i ]['ks_type'] = $type;
+		}
+		return $packages;
+	}
+
+	/** WooCommerce праща всички полета на формата при всяко обновяване на прегледа (post_data). */
+	public function remember_type_from_review( $post_data ): void {
+		parse_str( (string) $post_data, $data );
+		if ( array_key_exists( DeliveryFormView::PREFIX . 'type', (array) $data ) ) {
+			self::set_type( sanitize_text_field( (string) $data[ DeliveryFormView::PREFIX . 'type' ] ) );
+		}
+	}
+
+	/** Наличните видове и цените им се обновяват заедно с прегледа на поръчката. */
+	public function fragments( array $fragments ): array {
+		$fragments['#ks-type-options'] = self::options_json();
+		return $fragments;
+	}
+
+	/** JSON с наличните видове доставка от ставката на Еконт (label, cost, price като текст). */
+	private static function options_json(): string {
+		$options = [];
+		if ( function_exists( 'WC' ) && WC()->shipping() ) {
+			foreach ( WC()->shipping()->get_packages() as $package ) {
+				foreach ( (array) ( $package['rates'] ?? [] ) as $rate ) {
+					if ( ! $rate instanceof \WC_Shipping_Rate || ! EcontShippingMethod::is_econt_rate( $rate->get_id() ) ) {
+						continue;
+					}
+					foreach ( (array) ( $rate->get_meta_data()['ks_options'] ?? [] ) as $type => $o ) {
+						$options[ $type ] = [
+							'label' => (string) $o['label'],
+							'cost'  => (float) $o['cost'],
+							'price' => (float) $o['cost'] > 0 ? wp_strip_all_tags( wc_price( (float) $o['cost'] ) ) : __( 'безплатно', 'kanelov-shipping' ),
+						];
+					}
+					break 2;
+				}
+			}
+		}
+		return '<script type="application/json" id="ks-type-options">' . wp_json_encode( $options ) . '</script>';
+	}
+
+	// Полета.
+
 	public function relax_address_fields( array $fields ): array {
-		if ( ! self::chosen_type() ) {
+		if ( ! self::is_econt_chosen() ) {
 			return $fields;
 		}
 		foreach ( self::HIDDEN_BILLING as $key ) {
@@ -63,7 +150,7 @@ final class ClassicCheckout {
 	}
 
 	public function needs_shipping_address( bool $needs ): bool {
-		return self::chosen_type() ? false : $needs;
+		return self::is_econt_chosen() ? false : $needs;
 	}
 
 	public function assets(): void {
@@ -72,11 +159,14 @@ final class ClassicCheckout {
 		}
 		DeliveryFormView::enqueue_scripts();
 		wp_enqueue_script( 'ks-checkout', KS_URL . 'assets/js/checkout.js', [ 'jquery', 'ks-delivery-form' ], KS_VERSION, true );
-		wp_localize_script( 'ks-checkout', 'ksCheckout', DeliveryFormView::js_config() + [ 'saved' => $this->saved_delivery()->to_array() ] );
+		wp_localize_script( 'ks-checkout', 'ksCheckout', DeliveryFormView::js_config() + [
+			'saved'       => self::saved_delivery()->to_array(),
+			'defaultType' => ( new EcontSettings() )->default_type(),
+		] );
 	}
 
-	/** Запомненият избор: от потребителския профил или от текущата сесия. */
-	private function saved_delivery(): DeliveryData {
+	/** Запомненият избор: от текущата сесия или от потребителския профил. */
+	private static function saved_delivery(): DeliveryData {
 		$session = WC()->session ? WC()->session->get( 'ks_delivery' ) : null;
 		if ( is_array( $session ) ) {
 			return DeliveryData::from_array( $session );
@@ -88,10 +178,13 @@ final class ClassicCheckout {
 	}
 
 	public function render_fields(): void {
+		$saved       = self::saved_delivery();
+		$saved->type = self::requested_type();
 		?>
-		<div id="ks-delivery" class="ks-delivery" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>" hidden>
-			<h3><?php esc_html_e( 'Доставка с Еконт', 'kanelov-shipping' ); ?> <span class="ks-delivery__type"></span></h3>
-			<?php DeliveryFormView::render( $this->saved_delivery(), false ); ?>
+		<div id="ks-delivery" class="ks-delivery" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>" data-type="<?php echo esc_attr( $saved->type ); ?>" hidden>
+			<h3><?php esc_html_e( 'Доставка с Еконт', 'kanelov-shipping' ); ?></h3>
+			<?php DeliveryFormView::render( $saved, false ); ?>
+			<?php echo self::options_json(); // phpcs:ignore WordPress.Security.EscapeOutput -- JSON в script таг. ?>
 		</div>
 		<?php
 	}
@@ -102,12 +195,21 @@ final class ClassicCheckout {
 	}
 
 	public function validate(): void {
-		$type = self::chosen_type();
-		if ( ! $type ) {
+		// phpcs:disable WordPress.Security.NonceVerification -- WooCommerce проверява nonce на чекаута.
+		if ( isset( $_POST[ DeliveryFormView::PREFIX . 'type' ] ) ) {
+			self::set_type( sanitize_text_field( wp_unslash( (string) $_POST[ DeliveryFormView::PREFIX . 'type' ] ) ) );
+		}
+		if ( ! self::is_econt_chosen() ) {
 			return;
 		}
-		$delivery = self::delivery_from_post( $_POST, $type ); // phpcs:ignore WordPress.Security.NonceVerification -- WooCommerce проверява nonce на чекаута.
-		$carrier  = Plugin::instance()->carriers()->get( EcontCarrier::ID );
+		$type = self::requested_type();
+		if ( $type === '' ) {
+			wc_add_notice( __( 'Изберете как да получите пратката с Еконт: в офис, от Еконтомат или на адрес.', 'kanelov-shipping' ), 'error' );
+			return;
+		}
+		$delivery = self::delivery_from_post( $_POST, $type );
+		// phpcs:enable
+		$carrier = Plugin::instance()->carriers()->get( EcontCarrier::ID );
 		foreach ( $carrier->validate_delivery( $delivery ) as $error ) {
 			wc_add_notice( $error, 'error' );
 		}

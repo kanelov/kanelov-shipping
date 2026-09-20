@@ -10,6 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Общ изглед на полетата за офис/Еконтомат/адрес. Ползва се в чекаута и в админа (редакция на поръчка).
+ * В чекаута е на стъпки: 1) вид доставка с икони, 2) населено място, 3) офис/Еконтомат или адрес.
  */
 final class DeliveryFormView {
 
@@ -32,6 +33,8 @@ final class DeliveryFormView {
 				'noLockers'    => __( 'Няма Еконтомати в това населено място', 'kanelov-shipping' ),
 				'searchOffice' => __( 'Търсете офис по име или адрес…', 'kanelov-shipping' ),
 				'searchLocker' => __( 'Търсете Еконтомат…', 'kanelov-shipping' ),
+				'labelOffice'  => __( 'Офис на Еконт', 'kanelov-shipping' ),
+				'labelLocker'  => __( 'Еконтомат', 'kanelov-shipping' ),
 				'geoError'     => __( 'Не можахме да определим местоположението ви.', 'kanelov-shipping' ),
 				'nearest'      => __( 'Най-близки до вас', 'kanelov-shipping' ),
 				'km'           => __( 'км', 'kanelov-shipping' ),
@@ -48,8 +51,27 @@ final class DeliveryFormView {
 		wp_enqueue_script( 'ks-delivery-form', KS_URL . 'assets/js/delivery-form.js', [], KS_VERSION, true );
 	}
 
+	/** Икони за трите вида доставка (inline SVG, цветът идва от currentColor). */
+	private static function icon( string $type ): string {
+		$paths = [
+			DeliveryData::TYPE_OFFICE => '<path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6M9 11h.01M15 11h.01M12 11h.01"/>',
+			DeliveryData::TYPE_LOCKER => '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18M6 6h.01M6 12h.01M6 18h.01"/>',
+			DeliveryData::TYPE_DOOR   => '<path d="M3 11l9-8 9 8M5 10v11h14V10M10 21v-6h4v6"/>',
+		];
+		return '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ( $paths[ $type ] ?? '' ) . '</svg>';
+	}
+
+	/** Кратки надписи за иконите (в ставката остават „до офис“ и т.н.). */
+	public static function type_titles(): array {
+		return [
+			DeliveryData::TYPE_OFFICE => __( 'В офис', 'kanelov-shipping' ),
+			DeliveryData::TYPE_LOCKER => __( 'От Еконтомат', 'kanelov-shipping' ),
+			DeliveryData::TYPE_DOOR   => __( 'На адрес', 'kanelov-shipping' ),
+		];
+	}
+
 	/**
-	 * @param bool $with_type_select true в админа (избор на вид), false в чекаута (видът идва от ставката)
+	 * @param bool $with_type_select true в админа (падащ списък за вида, всичко видимо), false в чекаута (икони и стъпки)
 	 */
 	public static function render( DeliveryData $saved, bool $with_type_select = false ): void {
 		$f     = static fn( string $k ) => self::PREFIX . $k;
@@ -70,10 +92,22 @@ final class DeliveryFormView {
 				</select>
 			</p>
 		<?php else : ?>
-			<input type="hidden" name="<?php echo esc_attr( $f( 'type' ) ); ?>" value="<?php echo esc_attr( $saved->type ); ?>" class="ks-type">
+			<fieldset class="ks-step ks-step--type ks-type-picker">
+				<legend class="ks-step__label"><?php esc_html_e( 'Как искате да получите пратката?', 'kanelov-shipping' ); ?> <abbr class="required" title="<?php esc_attr_e( 'задължително', 'kanelov-shipping' ); ?>">*</abbr></legend>
+				<div class="ks-type-picker__options">
+					<?php foreach ( self::type_titles() as $key => $title ) : ?>
+						<label class="ks-type-option" data-type="<?php echo esc_attr( $key ); ?>">
+							<input type="radio" name="<?php echo esc_attr( $f( 'type' ) ); ?>" value="<?php echo esc_attr( $key ); ?>" class="ks-type" <?php checked( $saved->type, $key ); ?>>
+							<span class="ks-type-option__icon"><?php echo self::icon( $key ); // phpcs:ignore WordPress.Security.EscapeOutput -- статичен SVG. ?></span>
+							<span class="ks-type-option__title"><?php echo esc_html( $title ); ?></span>
+							<span class="ks-type-option__price"></span>
+						</label>
+					<?php endforeach; ?>
+				</div>
+			</fieldset>
 		<?php endif; ?>
 
-		<div class="ks-row ks-row--city">
+		<div class="ks-step ks-step--city ks-row ks-row--city">
 			<?php
 			woocommerce_form_field( $f( 'city_name' ), [
 				'type'         => 'text',
@@ -88,11 +122,11 @@ final class DeliveryFormView {
 			<button type="button" class="button ks-nearest"><?php esc_html_e( 'Най-близък до мен', 'kanelov-shipping' ); ?></button>
 		</div>
 
-		<div class="ks-section ks-section--office" hidden>
+		<div class="ks-step ks-step--place ks-section ks-section--office" hidden>
 			<?php
 			woocommerce_form_field( $f( 'office_search' ), [
 				'type'         => 'text',
-				'label'        => __( 'Офис / Еконтомат', 'kanelov-shipping' ),
+				'label'        => __( 'Офис на Еконт', 'kanelov-shipping' ),
 				'required'     => true,
 				'class'        => [ 'form-row-wide', 'ks-field-office' ],
 				'autocomplete' => 'off',
@@ -106,25 +140,18 @@ final class DeliveryFormView {
 			<?php endif; ?>
 		</div>
 
-		<div class="ks-section ks-section--door" hidden>
+		<div class="ks-step ks-step--place ks-section ks-section--door" hidden>
 			<?php
-			woocommerce_form_field( $f( 'street' ), [ 'type' => 'text', 'label' => __( 'Улица / булевард', 'kanelov-shipping' ), 'class' => [ 'form-row-first' ], 'autocomplete' => 'off', 'input_class' => [ 'ks-street' ] ], $saved->street );
-			woocommerce_form_field( $f( 'street_num' ), [ 'type' => 'text', 'label' => __( '№', 'kanelov-shipping' ), 'class' => [ 'form-row-last', 'ks-field-num' ] ], $saved->street_num );
-			woocommerce_form_field( $f( 'quarter' ), [ 'type' => 'text', 'label' => __( 'Квартал / ж.к.', 'kanelov-shipping' ), 'class' => [ 'form-row-first' ], 'autocomplete' => 'off', 'input_class' => [ 'ks-quarter' ] ], $saved->quarter );
-			woocommerce_form_field( $f( 'block' ), [ 'type' => 'text', 'label' => __( 'Блок', 'kanelov-shipping' ), 'class' => [ 'form-row-last', 'ks-field-num' ] ], $saved->block );
-			?>
-			<div class="ks-row ks-row--small">
-				<?php
-				woocommerce_form_field( $f( 'entrance' ), [ 'type' => 'text', 'label' => __( 'Вход', 'kanelov-shipping' ), 'class' => [ 'ks-third' ] ], $saved->entrance );
-				woocommerce_form_field( $f( 'floor' ), [ 'type' => 'text', 'label' => __( 'Етаж', 'kanelov-shipping' ), 'class' => [ 'ks-third' ] ], $saved->floor );
-				woocommerce_form_field( $f( 'apartment' ), [ 'type' => 'text', 'label' => __( 'Апартамент', 'kanelov-shipping' ), 'class' => [ 'ks-third' ] ], $saved->apartment );
-				?>
-			</div>
-			<?php
-			woocommerce_form_field( $f( 'note' ), [ 'type' => 'text', 'label' => __( 'Бележка за куриера', 'kanelov-shipping' ), 'class' => [ 'form-row-wide' ], 'placeholder' => __( 'Ориентир, звънец, фирма…', 'kanelov-shipping' ) ], $saved->note );
+			woocommerce_form_field( $f( 'street' ), [ 'type' => 'text', 'label' => __( 'Улица / булевард', 'kanelov-shipping' ), 'class' => [ 'ks-span-4' ], 'autocomplete' => 'off', 'input_class' => [ 'ks-street' ] ], $saved->street );
+			woocommerce_form_field( $f( 'street_num' ), [ 'type' => 'text', 'label' => __( '№', 'kanelov-shipping' ), 'class' => [ 'ks-span-2' ] ], $saved->street_num );
+			woocommerce_form_field( $f( 'quarter' ), [ 'type' => 'text', 'label' => __( 'Квартал / ж.к.', 'kanelov-shipping' ), 'class' => [ 'ks-span-4' ], 'autocomplete' => 'off', 'input_class' => [ 'ks-quarter' ] ], $saved->quarter );
+			woocommerce_form_field( $f( 'block' ), [ 'type' => 'text', 'label' => __( 'Блок', 'kanelov-shipping' ), 'class' => [ 'ks-span-2' ] ], $saved->block );
+			woocommerce_form_field( $f( 'entrance' ), [ 'type' => 'text', 'label' => __( 'Вход', 'kanelov-shipping' ), 'class' => [ 'ks-span-2' ] ], $saved->entrance );
+			woocommerce_form_field( $f( 'floor' ), [ 'type' => 'text', 'label' => __( 'Етаж', 'kanelov-shipping' ), 'class' => [ 'ks-span-2' ] ], $saved->floor );
+			woocommerce_form_field( $f( 'apartment' ), [ 'type' => 'text', 'label' => __( 'Апартамент', 'kanelov-shipping' ), 'class' => [ 'ks-span-2' ] ], $saved->apartment );
+			woocommerce_form_field( $f( 'note' ), [ 'type' => 'text', 'label' => __( 'Бележка за куриера', 'kanelov-shipping' ), 'class' => [ 'ks-span-6' ], 'placeholder' => __( 'Ориентир, звънец, фирма…', 'kanelov-shipping' ) ], $saved->note );
 			?>
 		</div>
-		<script type="application/json" class="ks-type-labels"><?php echo wp_json_encode( $types ); ?></script>
 		<?php
 	}
 

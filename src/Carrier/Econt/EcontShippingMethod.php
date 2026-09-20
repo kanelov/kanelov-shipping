@@ -7,8 +7,9 @@ use Kanelov\Shipping\Carrier\DeliveryData;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Метод за доставка „Еконт“. Добавя се в зона за доставка и предлага до три ставки:
- * до офис, до Еконтомат и до адрес, всяка със своя фиксирана цена и праг за безплатна доставка.
+ * Метод за доставка „Еконт“. Добавя се в зона за доставка и дава една ставка „Еконт“, чиято цена зависи от
+ * избрания в чекаута вид доставка (офис, Еконтомат, адрес), всеки със своя фиксирана цена и праг за безплатна.
+ * Видът идва в пакета като $package['ks_type'] (ClassicCheckout го слага от сесията).
  * Глобалните настройки (достъп до API, подател, споразумения, пратка) са в WooCommerce > Доставка > Еконт.
  */
 final class EcontShippingMethod extends \WC_Shipping_Method {
@@ -42,14 +43,9 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 		];
 	}
 
-	/** Връща типа доставка от id на ставка ("ks_econt:3:office" → "office") или null. */
-	public static function type_from_rate_id( string $rate_id ): ?string {
-		$parts = explode( ':', $rate_id );
-		if ( ( $parts[0] ?? '' ) !== self::ID ) {
-			return null;
-		}
-		$type = end( $parts );
-		return in_array( $type, DeliveryData::TYPES, true ) ? $type : null;
+	/** Дали id на ставка ("ks_econt:3") е на този метод. */
+	public static function is_econt_rate( string $rate_id ): bool {
+		return explode( ':', $rate_id )[0] === self::ID;
 	}
 
 	public function calculate_shipping( $package = [] ): void {
@@ -71,6 +67,7 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 		}
 		$subtotal = (float) apply_filters( 'kanelov_shipping/free_shipping_basis', $subtotal, $package );
 
+		$options = [];
 		foreach ( self::rate_types() as $type => $label ) {
 			if ( $this->get_instance_option( $type . '_enabled', 'yes' ) !== 'yes' ) {
 				continue;
@@ -83,14 +80,26 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 			if ( $free_from > 0 && $subtotal >= $free_from ) {
 				$price = 0.0;
 			}
-			$this->add_rate( [
-				'id'        => $this->get_rate_id( $type ),
-				'label'     => $this->get_instance_option( $type . '_label', '' ) ?: ( $this->title . ' ' . $label ),
-				'cost'      => $price,
-				'package'   => $package,
-				'meta_data' => [ 'ks_carrier' => EcontCarrier::ID, 'ks_type' => $type ],
-			] );
+			$options[ $type ] = [
+				'label' => $this->get_instance_option( $type . '_label', '' ) ?: $label,
+				'cost'  => $price,
+			];
 		}
+		if ( ! $options ) {
+			return;
+		}
+
+		$type = (string) ( $package['ks_type'] ?? '' );
+		if ( ! isset( $options[ $type ] ) ) {
+			$type = '';
+		}
+		$this->add_rate( [
+			'id'        => $this->get_rate_id(),
+			'label'     => $type ? $this->title . ' ' . $options[ $type ]['label'] : $this->title,
+			'cost'      => $type ? $options[ $type ]['cost'] : min( array_column( $options, 'cost' ) ),
+			'package'   => $package,
+			'meta_data' => [ 'ks_carrier' => EcontCarrier::ID, 'ks_type' => $type, 'ks_options' => $options ],
+		] );
 	}
 
 	// Настройки на инстанцията (в зоната).
@@ -137,7 +146,9 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 				'title'       => __( 'Собствен надпис (по избор)', 'kanelov-shipping' ),
 				'type'        => 'text',
 				'default'     => '',
-				'placeholder' => sprintf( '%s %s', __( 'Еконт', 'kanelov-shipping' ), $label ),
+				'placeholder' => $label,
+				'description' => __( 'Показва се след името на куриера, напр. „Еконт до офис“.', 'kanelov-shipping' ),
+				'desc_tip'    => true,
 			];
 		}
 
@@ -174,6 +185,14 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 				'label'       => __( 'Методът Еконт се вижда в чекаута само за администратори на магазина', 'kanelov-shipping' ),
 				'default'     => 'no',
 				'description' => __( 'Удобно за тест на жив сайт: клиентите не виждат Еконт, докато не изключите режима.', 'kanelov-shipping' ),
+			],
+			'default_type' => [
+				'title'       => __( 'Вид доставка по подразбиране', 'kanelov-shipping' ),
+				'type'        => 'select',
+				'default'     => DeliveryData::TYPE_OFFICE,
+				'options'     => [ '' => __( 'Без (клиентът избира)', 'kanelov-shipping' ) ] + self::rate_types(),
+				'description' => __( 'Предварително избран вид в чекаута, ако клиентът няма запомнен избор.', 'kanelov-shipping' ),
+				'desc_tip'    => true,
 			],
 			'map_enabled' => [
 				'title'   => __( 'Карта на офисите', 'kanelov-shipping' ),
@@ -327,7 +346,7 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 			$out[ $r['code'] ] = trim( ( $r['city'] ? $r['city'] . ' – ' : '' ) . $r['name'] . ' [' . $r['code'] . ']' );
 		}
 		if ( count( $out ) === 1 ) {
-			$out[''] = __( '(няма синхронизирани офиси; натиснете „Синхронизирай номенклатурите“)', 'kanelov-shipping' );
+			$out[''] = __( '(няма заредени офиси; натиснете „Обнови офисите и Еконтоматите“)', 'kanelov-shipping' );
 		}
 		return $out;
 	}
@@ -344,9 +363,9 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 			<td class="forminp">
 				<a class="button" href="<?php echo esc_url( SettingsActions::url( 'test' ) ); ?>"><?php esc_html_e( 'Тест на връзката', 'kanelov-shipping' ); ?></a>
 				<a class="button" href="<?php echo esc_url( SettingsActions::url( 'profile' ) ); ?>"><?php esc_html_e( 'Обнови профила и споразуменията', 'kanelov-shipping' ); ?></a>
-				<a class="button" href="<?php echo esc_url( SettingsActions::url( 'sync' ) ); ?>"><?php esc_html_e( 'Синхронизирай номенклатурите', 'kanelov-shipping' ); ?></a>
+				<a class="button" href="<?php echo esc_url( SettingsActions::url( 'sync' ) ); ?>"><?php esc_html_e( 'Обнови офисите и Еконтоматите', 'kanelov-shipping' ); ?></a>
 				<p class="description">
-					<?php echo esc_html( sprintf( __( 'Профил обновен: %s · Градове: %s · Офиси и Еконтомати: %s. Номенклатурите се обновяват автоматично всяка нощ.', 'kanelov-shipping' ), $profile_time ? wp_date( 'd.m.Y H:i', $profile_time ) : '—', $fmt( (array) ( $sync['cities'] ?? [] ) ), $fmt( (array) ( $sync['offices'] ?? [] ) ) ) ); ?>
+					<?php echo esc_html( sprintf( __( 'Профил обновен: %s · Градове: %s · Офиси и Еконтомати: %s. Обновяват се автоматично всяка нощ.', 'kanelov-shipping' ), $profile_time ? wp_date( 'd.m.Y H:i', $profile_time ) : '—', $fmt( (array) ( $sync['cities'] ?? [] ) ), $fmt( (array) ( $sync['offices'] ?? [] ) ) ) ); ?>
 					<?php esc_html_e( 'Запазете промените, преди да натиснете бутон.', 'kanelov-shipping' ); ?>
 				</p>
 			</td>
