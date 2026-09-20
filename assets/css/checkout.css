@@ -3,8 +3,31 @@
 .ks-delivery[hidden], .ks-step[hidden], .ks-section[hidden] { display: none !important; }
 .ks-delivery .optional { display: none; }
 .ks-row--city { position: relative; }
-.ks-nearest { margin: 0 0 1em; font-size: .9em; }
 .ks-office-selected { margin: -.5em 0 1em; font-size: .95em; }
+
+/* Куриер: карти, сивата е „скоро“ */
+.ks-carrier-picker { border: 0; padding: 0; margin: 0 0 1.25em; min-width: 0; }
+.ks-carrier-picker__options { display: flex; flex-wrap: wrap; gap: 10px; }
+.ks-carrier-option {
+	display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 140px;
+	padding: 10px 14px; margin: 0; border: 2px solid var(--theme-border-color, #d1d5db); border-radius: 8px;
+	background: transparent; color: inherit; font: inherit; line-height: 1.25; text-align: left; cursor: pointer;
+	transition: border-color .15s, box-shadow .15s;
+}
+.ks-carrier-option__name { font-weight: 700; letter-spacing: .01em; }
+.ks-carrier-option__sub { font-size: .85em; opacity: .75; }
+.ks-carrier-option:hover { border-color: var(--theme-palette-color-1, #e26b3a); }
+.ks-carrier-option.is-selected { border-color: var(--theme-palette-color-1, #e26b3a); box-shadow: 0 0 0 1px var(--theme-palette-color-1, #e26b3a); }
+.ks-carrier-option:focus-visible { outline: 2px solid var(--theme-palette-color-1, #e26b3a); outline-offset: 2px; }
+.ks-carrier-option--soon { opacity: .5; cursor: not-allowed; border-style: dashed; }
+.ks-carrier-option--soon:hover { border-color: var(--theme-border-color, #d1d5db); }
+.ks-carrier-form[hidden] { display: none !important; }
+.ks-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 1em; }
+.ks-actions .button { margin: 0; font-size: .9em; }
+
+/* Когато всички ставки са на нашите куриери, изборът е в блока, а в прегледа остава само избраният ред. */
+body.ks-hide-rates #shipping_method li:not(.ks-current) { display: none; }
+body.ks-hide-rates #shipping_method li.ks-current input[type="radio"] { display: none; }
 
 /* Стъпка 1: вид доставка с икони */
 .ks-type-picker { border: 0; padding: 0; margin: 0 0 1.25em; min-width: 0; }
@@ -66,7 +89,7 @@ body.ks-econt-selected #billing_postcode_field,
 body.ks-econt-selected .woocommerce-shipping-fields { display: none !important; }
 
 /* Карта в диалог */
-.ks-map-open { margin: -.5em 0 1em; font-size: .9em; }
+.ks-delivery--admin .ks-map-open { margin: -.5em 0 1em; font-size: .9em; }
 .ks-map-dialog { width: min(920px, 96vw); max-width: none; padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
 .ks-map-dialog::backdrop { background: rgba(0,0,0,.5); }
 .ks-map-dialog__head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; }

@@ -191,6 +191,7 @@
 				var toOffice = type !== 'door';
 				els.secOffice.hidden = !toOffice; els.secDoor.hidden = toOffice;
 				if (els.nearest) els.nearest.hidden = !toOffice;
+				if (mapBtn) mapBtn.hidden = !toOffice;
 				els.office.placeholder = type === 'locker' ? i18n.searchLocker : i18n.searchOffice;
 				var label = root.querySelector('.ks-field-office label');
 				if (label && label.firstChild && label.firstChild.nodeType === 3 && i18n.labelOffice) {

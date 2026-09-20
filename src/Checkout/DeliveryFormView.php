@@ -35,6 +35,7 @@ final class DeliveryFormView {
 				'searchLocker' => __( 'Търсете Еконтомат…', 'kanelov-shipping' ),
 				'labelOffice'  => __( 'Офис на Еконт', 'kanelov-shipping' ),
 				'labelLocker'  => __( 'Еконтомат', 'kanelov-shipping' ),
+				'from'         => __( 'от', 'kanelov-shipping' ),
 				'geoError'     => __( 'Не можахме да определим местоположението ви.', 'kanelov-shipping' ),
 				'nearest'      => __( 'Най-близки до вас', 'kanelov-shipping' ),
 				'km'           => __( 'км', 'kanelov-shipping' ),
@@ -119,7 +120,12 @@ final class DeliveryFormView {
 				'input_class'  => [ 'ks-city' ],
 			], $saved->city_name );
 			?>
-			<button type="button" class="button ks-nearest"><?php esc_html_e( 'Най-близък до мен', 'kanelov-shipping' ); ?></button>
+			<div class="ks-actions">
+				<button type="button" class="button ks-nearest"><?php esc_html_e( 'Най-близък до мен', 'kanelov-shipping' ); ?></button>
+				<?php if ( ! $with_type_select && ( new EcontSettings() )->map_enabled() ) : ?>
+					<button type="button" class="button ks-map-open"><?php esc_html_e( 'Покажи на карта', 'kanelov-shipping' ); ?></button>
+				<?php endif; ?>
+			</div>
 		</div>
 
 		<div class="ks-step ks-step--place ks-section ks-section--office" hidden>
@@ -135,7 +141,7 @@ final class DeliveryFormView {
 			], $saved->office_name );
 			?>
 			<p class="ks-office-selected" <?php echo $saved->office_code ? '' : 'hidden'; ?>><?php echo $saved->office_code ? '✓ ' . esc_html( $saved->office_name ) : ''; ?></p>
-			<?php if ( ( new EcontSettings() )->map_enabled() ) : ?>
+			<?php if ( $with_type_select && ( new EcontSettings() )->map_enabled() ) : ?>
 				<button type="button" class="button ks-map-open"><?php esc_html_e( 'Покажи на карта', 'kanelov-shipping' ); ?></button>
 			<?php endif; ?>
 		</div>

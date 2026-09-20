@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Класически чекаут (шорткод [woocommerce_checkout]).
  * Еконт е една ставка в прегледа на поръчката. Видът доставка (офис, Еконтомат, адрес) клиентът избира с икони
- * в блока „Доставка с Еконт“ в лявата колона, на мястото на скритите адресни полета; изборът се пази в сесията, влиза в пакета за доставка и определя
+ * в блока „Доставка“ в лявата колона (първо куриер, после вид), на мястото на скритите адресни полета; изборът се пази в сесията, влиза в пакета за доставка и определя
  * цената на ставката. Стандартните адресни полета се скриват и стават незадължителни; след поръчка адресът за
  * доставка в WooCommerce се попълва с четим текст, за да се вижда навсякъде.
  */
@@ -177,13 +177,38 @@ final class ClassicCheckout {
 		return new DeliveryData();
 	}
 
+	/** Куриери, които още не са готови: показват се като сива карта „скоро“. */
+	const COMING_SOON = [ 'boxnow' => 'Box Now' ];
+
 	public function render_fields(): void {
 		$saved       = self::saved_delivery();
 		$saved->type = self::requested_type();
+		$carriers    = Plugin::instance()->carriers()->all();
 		?>
-		<div id="ks-delivery" class="ks-delivery" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>" data-type="<?php echo esc_attr( $saved->type ); ?>" hidden>
-			<h3><?php esc_html_e( 'Доставка с Еконт', 'kanelov-shipping' ); ?></h3>
-			<?php DeliveryFormView::render( $saved, false ); ?>
+		<div id="ks-delivery" class="ks-delivery" data-type="<?php echo esc_attr( $saved->type ); ?>" hidden>
+			<h3><?php esc_html_e( 'Доставка', 'kanelov-shipping' ); ?></h3>
+
+			<fieldset class="ks-step ks-step--carrier ks-carrier-picker">
+				<legend class="ks-step__label"><?php esc_html_e( 'Куриер', 'kanelov-shipping' ); ?></legend>
+				<div class="ks-carrier-picker__options">
+					<?php foreach ( $carriers as $carrier ) : ?>
+						<button type="button" class="ks-carrier-option" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" data-method="<?php echo esc_attr( EcontShippingMethod::ID ); ?>">
+							<span class="ks-carrier-option__name"><?php echo esc_html( $carrier->label() ); ?></span>
+							<span class="ks-carrier-option__sub"></span>
+						</button>
+					<?php endforeach; ?>
+					<?php foreach ( self::COMING_SOON as $id => $name ) : ?>
+						<span class="ks-carrier-option ks-carrier-option--soon" data-carrier="<?php echo esc_attr( $id ); ?>" aria-disabled="true">
+							<span class="ks-carrier-option__name"><?php echo esc_html( $name ); ?></span>
+							<span class="ks-carrier-option__sub"><?php esc_html_e( 'скоро', 'kanelov-shipping' ); ?></span>
+						</span>
+					<?php endforeach; ?>
+				</div>
+			</fieldset>
+
+			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>" hidden>
+				<?php DeliveryFormView::render( $saved, false ); ?>
+			</div>
 			<?php echo self::options_json(); // phpcs:ignore WordPress.Security.EscapeOutput -- JSON в script таг. ?>
 		</div>
 		<?php

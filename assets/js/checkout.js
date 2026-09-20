@@ -1,17 +1,32 @@
 /* global ksCheckout, jQuery, KSDeliveryForm */
-/* Kanelov Shipping – класически чекаут. Стъпки: вид доставка (икони) → населено място → офис/Еконтомат или адрес.
- * Видът се праща като ks_type при всяко обновяване на прегледа; сървърът го пази в сесията и сменя цената на ставката. */
+/* Kanelov Shipping – класически чекаут. Блок „Доставка“: куриер (карти) → вид доставка (икони) → населено място → офис/Еконтомат или адрес.
+ * Картата на куриера избира ставката му в WooCommerce. Видът се праща като ks_type при всяко обновяване на прегледа;
+ * сървърът го пази в сесията и сменя цената на ставката. */
 (function ($) {
 	'use strict';
 	var cfg = window.ksCheckout || {};
 	var STORAGE_KEY = 'ks_delivery';
 	var TYPES = ['office', 'locker', 'door'];
-	var root, form, cityId, options = {};
+	var root, form, cityId, carrierForm, options = {};
 
+	function rateInputs() { return Array.prototype.slice.call(document.querySelectorAll('input[name^="shipping_method"]')); }
+	function rateFor(methodId) {
+		return rateInputs().filter(function (i) { return String(i.value).split(':')[0] === methodId; })[0] || null;
+	}
+	function chosenRate() {
+		return document.querySelector('input[name^="shipping_method"]:checked') || document.querySelector('input[name^="shipping_method"][type="hidden"]');
+	}
+	function econtAvailable() { return !!rateFor(cfg.methodId); }
 	function econtChosen() {
-		var input = document.querySelector('input[name^="shipping_method"]:checked') || document.querySelector('input[name^="shipping_method"][type="hidden"]');
+		var input = chosenRate();
 		return !!input && String(input.value).split(':')[0] === cfg.methodId;
 	}
+	/* Всички ставки са на наши куриери (ks_*) → изборът е само в блока, в прегледа остава избраният ред. */
+	function onlyOurRates() {
+		var inputs = rateInputs();
+		return inputs.length > 0 && inputs.every(function (i) { return String(i.value).indexOf('ks_') === 0; });
+	}
+
 	function getType() {
 		var r = root.querySelector('input.ks-type:checked');
 		return r ? r.value : '';
@@ -50,16 +65,36 @@
 	function readOptions() {
 		var el = document.getElementById('ks-type-options');
 		try { options = el ? (JSON.parse(el.textContent) || {}) : {}; } catch (e) { options = {}; }
-		var any = false;
+		var min = null;
 		TYPES.forEach(function (t) {
 			var opt = root.querySelector('.ks-type-option[data-type="' + t + '"]'); if (!opt) return;
 			var available = !!options[t];
-			any = any || available;
 			opt.hidden = !available;
 			opt.querySelector('input').disabled = !available;
 			opt.querySelector('.ks-type-option__price').textContent = available ? options[t].price : '';
+			if (available && (min === null || options[t].cost < min.cost)) min = options[t];
 		});
-		return any;
+		var sub = root.querySelector('.ks-carrier-option[data-method="' + cfg.methodId + '"] .ks-carrier-option__sub');
+		if (sub) sub.textContent = min ? (min.cost > 0 ? (cfg.i18n.from || 'от') + ' ' + min.price : min.price) : '';
+	}
+
+	/* Куриерите: коя карта е избрана, коя ставка е налична. */
+	function refreshCarriers() {
+		var chosen = chosenRate();
+		var chosenMethod = chosen ? String(chosen.value).split(':')[0] : '';
+		root.querySelectorAll('.ks-carrier-option[data-method]').forEach(function (o) {
+			var input = rateFor(o.dataset.method);
+			o.hidden = !input;
+			o.classList.toggle('is-selected', !!input && o.dataset.method === chosenMethod);
+			o.setAttribute('aria-pressed', o.dataset.method === chosenMethod ? 'true' : 'false');
+		});
+		var hide = onlyOurRates();
+		document.body.classList.toggle('ks-hide-rates', hide);
+		if (hide) {
+			rateInputs().forEach(function (i) {
+				var li = i.closest('li'); if (li) li.classList.toggle('ks-current', i === chosen);
+			});
+		}
 	}
 
 	/* Кои стъпки се виждат: населено място след избран вид, офис/адрес след избрано населено място. */
@@ -76,10 +111,14 @@
 	}
 
 	function apply() {
-		var econt = econtChosen();
+		var available = econtAvailable();
+		var econt = available && econtChosen();
+		root.hidden = !available;
 		document.body.classList.toggle('ks-econt-selected', econt);
 		toggleRequired(econt);
-		root.hidden = !econt;
+		if (!available) { document.body.classList.remove('ks-hide-rates'); return; }
+		refreshCarriers();
+		carrierForm.hidden = !econt;
 		if (!econt) return;
 		readOptions();
 		if (!getType()) {
@@ -94,6 +133,7 @@
 		if (!root || root.dataset.ksReady) return;
 		root.dataset.ksReady = '1';
 		cityId = root.querySelector('.ks-city-id');
+		carrierForm = root.querySelector('.ks-carrier-form');
 
 		var saved = recall();
 		if (saved) {
@@ -106,6 +146,15 @@
 		}
 		form = KSDeliveryForm.mount(root, { rest: cfg.rest, i18n: cfg.i18n, map: cfg.map, getType: getType, onChange: function () { remember(); refreshSteps(); } });
 		root.addEventListener('input', refreshSteps);
+
+		/* Карта на куриер: избира ставката му; WooCommerce обновява прегледа при change. */
+		root.addEventListener('click', function (e) {
+			var card = e.target.closest('.ks-carrier-option[data-method]'); if (!card) return;
+			var input = rateFor(card.dataset.method); if (!input || input.checked) return;
+			input.checked = true;
+			$(input).trigger('change');
+			apply();
+		});
 
 		/* Смяна на вида: нова цена на ставката и следваща стъпка. */
 		root.addEventListener('change', function (e) {
