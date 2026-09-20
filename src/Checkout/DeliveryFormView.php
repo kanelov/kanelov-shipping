@@ -75,7 +75,7 @@ final class DeliveryFormView {
 				'input_class'  => [ 'ks-city' ],
 			], $saved->city_name );
 			?>
-			<button type="button" class="button ks-nearest">📍 <?php esc_html_e( 'Най-близък до мен', 'kanelov-shipping' ); ?></button>
+			<button type="button" class="button ks-nearest"><?php esc_html_e( 'Най-близък до мен', 'kanelov-shipping' ); ?></button>
 		</div>
 
 		<div class="ks-section ks-section--office" hidden>

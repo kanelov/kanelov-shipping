@@ -36,7 +36,7 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 
 	public static function rate_types(): array {
 		return [
-			DeliveryData::TYPE_OFFICE => __( 'до офис на Еконт', 'kanelov-shipping' ),
+			DeliveryData::TYPE_OFFICE => __( 'до офис', 'kanelov-shipping' ),
 			DeliveryData::TYPE_LOCKER => __( 'до Еконтомат', 'kanelov-shipping' ),
 			DeliveryData::TYPE_DOOR   => __( 'до адрес', 'kanelov-shipping' ),
 		];
