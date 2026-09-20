@@ -255,10 +255,13 @@ final class EcontNomenclature {
 	public function nearest( float $lat, float $lng, bool $aps, int $limit = 5 ): array {
 		global $wpdb;
 		$table = self::table_offices();
+		$c     = self::table_cities();
 		$rows  = $wpdb->get_results( $wpdb->prepare(
-			"SELECT id, code, city_id, name, address, latitude, longitude, hours, is_aps,
-			 (6371 * ACOS( LEAST(1, COS(RADIANS(%f)) * COS(RADIANS(latitude)) * COS(RADIANS(longitude) - RADIANS(%f)) + SIN(RADIANS(%f)) * SIN(RADIANS(latitude)) ) )) AS km
-			 FROM {$table} WHERE is_aps = %d AND latitude IS NOT NULL AND latitude <> 0 ORDER BY km ASC LIMIT %d",
+			"SELECT o.id, o.code, o.city_id, o.name, o.address, o.latitude, o.longitude, o.hours, o.is_aps,
+			 c.name AS city_name, c.post_code AS city_post_code,
+			 (6371 * ACOS( LEAST(1, COS(RADIANS(%f)) * COS(RADIANS(o.latitude)) * COS(RADIANS(o.longitude) - RADIANS(%f)) + SIN(RADIANS(%f)) * SIN(RADIANS(o.latitude)) ) )) AS km
+			 FROM {$table} o LEFT JOIN {$c} c ON c.id = o.city_id
+			 WHERE o.is_aps = %d AND o.latitude IS NOT NULL AND o.latitude <> 0 ORDER BY km ASC LIMIT %d",
 			$lat, $lng, $lat, $aps ? 1 : 0, $limit
 		), ARRAY_A );
 		return array_map( [ $this, 'format_office' ], (array) $rows );
@@ -277,6 +280,7 @@ final class EcontNomenclature {
 			'hours'   => (string) ( $r['hours'] ?? '' ),
 			'is_aps'  => ! empty( $r['is_aps'] ),
 			'km'      => isset( $r['km'] ) ? round( (float) $r['km'], 1 ) : null,
+			'city'    => isset( $r['city_name'] ) ? [ 'id' => (int) $r['city_id'], 'name' => (string) $r['city_name'], 'post_code' => (string) ( $r['city_post_code'] ?? '' ) ] : null,
 		];
 	}
 

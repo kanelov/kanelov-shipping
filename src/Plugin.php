@@ -6,6 +6,7 @@ use Kanelov\Shipping\Carrier\CarrierRegistry;
 use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
 use Kanelov\Shipping\Carrier\Econt\EcontNomenclature;
 use Kanelov\Shipping\Carrier\Econt\EcontShippingMethod;
+use Kanelov\Shipping\Checkout\ClassicCheckout;
 use Kanelov\Shipping\Rest\EcontSearchController;
 
 defined( 'ABSPATH' ) || exit;
@@ -42,6 +43,7 @@ final class Plugin {
 
 		( new EcontNomenclature() )->register_jobs();
 		( new EcontSearchController() )->register();
+		( new ClassicCheckout() )->register();
 
 		if ( is_admin() ) {
 			( new SettingsActions() )->register();
