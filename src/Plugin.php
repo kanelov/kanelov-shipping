@@ -1,12 +1,15 @@
 <?php
 namespace Kanelov\Shipping;
 
+use Kanelov\Shipping\Admin\OrderMetabox;
+use Kanelov\Shipping\Admin\OrdersList;
 use Kanelov\Shipping\Admin\SettingsActions;
 use Kanelov\Shipping\Carrier\CarrierRegistry;
 use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
 use Kanelov\Shipping\Carrier\Econt\EcontNomenclature;
 use Kanelov\Shipping\Carrier\Econt\EcontShippingMethod;
 use Kanelov\Shipping\Checkout\ClassicCheckout;
+use Kanelov\Shipping\Order\TrackingLink;
 use Kanelov\Shipping\Rest\EcontSearchController;
 
 defined( 'ABSPATH' ) || exit;
@@ -44,9 +47,12 @@ final class Plugin {
 		( new EcontNomenclature() )->register_jobs();
 		( new EcontSearchController() )->register();
 		( new ClassicCheckout() )->register();
+		( new TrackingLink() )->register();
 
 		if ( is_admin() ) {
 			( new SettingsActions() )->register();
+			( new OrderMetabox() )->register();
+			( new OrdersList() )->register();
 		}
 	}
 }

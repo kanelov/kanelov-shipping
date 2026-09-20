@@ -1,0 +1,24 @@
+/* Kanelov Shipping – админ (кутия в поръчката и списък с поръчки) */
+#ks-order .ks-shipment { background: #f6f7f7; border: 1px solid #dcdcde; border-radius: 4px; padding: 10px 14px; margin-bottom: 12px; }
+#ks-order .ks-shipment__number { font-size: 15px; margin: 0 0 6px; }
+#ks-order .ks-badge--demo { display: inline-block; background: #dba617; color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 3px; margin-left: 6px; }
+#ks-order .ks-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 0; }
+#ks-order .ks-do--danger { color: #b32d2e; border-color: #b32d2e; }
+#ks-order .ks-delivery-edit { margin: 10px 0; border: 1px solid #dcdcde; border-radius: 4px; padding: 8px 12px; }
+#ks-order .ks-delivery-edit summary { cursor: pointer; }
+#ks-order .ks-edit-hint { color: #2271b1; font-size: 12px; margin-left: 6px; }
+#ks-order .ks-delivery--admin { margin: 10px 0 0; }
+#ks-order .ks-delivery--admin .form-row { margin: 0 0 10px; }
+#ks-order .ks-delivery--admin label { display: block; font-weight: 600; margin-bottom: 3px; }
+#ks-order .ks-delivery--admin input[type="text"], #ks-order .ks-delivery--admin select { width: 100%; }
+#ks-order .ks-delivery--admin .form-row-first, #ks-order .ks-delivery--admin .form-row-last { width: 48%; display: inline-block; vertical-align: top; }
+#ks-order .ks-delivery--admin .form-row-last { margin-left: 3%; }
+#ks-order .ks-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+#ks-order .ks-label-form label { display: block; font-weight: 600; }
+#ks-order .ks-label-form input[type="text"], #ks-order .ks-label-form input[type="number"], #ks-order .ks-label-form select { width: 100%; font-weight: 400; }
+#ks-order .ks-checks label { display: inline-block; font-weight: 400; margin-right: 16px; }
+#ks-order .ks-calc-result { font-weight: 600; }
+#ks-order .ks-tracking table { margin-top: 8px; }
+#ks-order.ks-busy { opacity: .5; pointer-events: none; }
+.ks-col-shipment a { font-weight: 600; }
+.ks-col-shipment .ks-mini { display: block; color: #646970; font-size: 12px; }

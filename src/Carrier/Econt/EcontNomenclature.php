@@ -38,9 +38,10 @@ final class EcontNomenclature {
 
 	/** Ежедневна синхронизация, ако има данни за достъп. */
 	public function ensure_schedule(): void {
-		if ( ! function_exists( 'as_has_scheduled_action' ) ) {
+		if ( ! function_exists( 'as_has_scheduled_action' ) || get_transient( 'ks_econt_schedule_checked' ) ) {
 			return;
 		}
+		set_transient( 'ks_econt_schedule_checked', 1, HOUR_IN_SECONDS );
 		if ( ! as_has_scheduled_action( self::JOB_SYNC, [], self::AS_GROUP ) ) {
 			as_schedule_recurring_action( strtotime( 'tomorrow 03:30' ), DAY_IN_SECONDS, self::JOB_SYNC, [], self::AS_GROUP );
 		}
