@@ -51,6 +51,29 @@ final class Diagnostics {
 				}
 			}
 			self::write( 'ENQUEUE CALLBACKS | ' . implode( ', ', $list ) );
+			// Обвива всяка функция на приоритети 10..20: записва влизане/излизане и погълнати изключения.
+			if ( isset( $wp_filter['admin_enqueue_scripts'] ) ) {
+				foreach ( $wp_filter['admin_enqueue_scripts']->callbacks as $prio => $cbs ) {
+					if ( $prio < 10 || $prio > 20 ) {
+						continue;
+					}
+					foreach ( $cbs as $key => $cb ) {
+						$fn   = $cb['function'];
+						$name = $prio . ':' . self::callback_name( $fn );
+						$wp_filter['admin_enqueue_scripts']->callbacks[ $prio ][ $key ]['function'] = static function ( ...$args ) use ( $fn, $name ) {
+							self::trace( 'enter ' . $name );
+							try {
+								$r = $fn( ...$args );
+							} catch ( \Throwable $t ) {
+								self::write( 'THROWN in ' . $name . ' | ' . get_class( $t ) . ': ' . $t->getMessage() . ' | ' . basename( $t->getFile() ) . ':' . $t->getLine() );
+								throw $t;
+							}
+							self::trace( 'leave ' . $name );
+							return $r;
+						};
+					}
+				}
+			}
 		}, -9998 );
 		foreach ( [ 0, 5, 9, 10, 11, 15, 20, 30, 50, 100, 999 ] as $prio ) {
 			add_action( 'admin_enqueue_scripts', static fn() => self::trace( 'admin_enqueue_scripts after prio ' . $prio ), $prio );
