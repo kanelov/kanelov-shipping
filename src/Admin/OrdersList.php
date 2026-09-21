@@ -36,6 +36,11 @@ final class OrdersList {
 		add_action( 'admin_post_' . self::SINGLE, [ $this, 'handle_single' ] );
 	}
 
+	/** Линк за бърза товарителница от списъка (със стандартните настройки). */
+	public static function single_url( int $order_id ): string {
+		return wp_nonce_url( admin_url( 'admin-post.php?action=' . self::SINGLE . '&order=' . $order_id ), self::SINGLE . '_' . $order_id );
+	}
+
 	public function columns( array $columns ): array {
 		$out = [];
 		foreach ( $columns as $key => $label ) {
