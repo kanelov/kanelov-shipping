@@ -84,7 +84,7 @@ final class EcontSettings {
 	}
 
 	public function receiver_pays_shipping(): bool {
-		return $this->bool( 'receiver_pays_shipping', false );
+		return $this->bool( 'receiver_pays_shipping', true );
 	}
 
 	public function sms_notification(): bool {

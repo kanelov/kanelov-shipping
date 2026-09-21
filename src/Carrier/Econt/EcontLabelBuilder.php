@@ -129,8 +129,10 @@ final class EcontLabelBuilder {
 				$services['invoiceBeforePayCD'] = true;
 			}
 		}
-		if ( ! empty( $opt['declared_value'] ) && (float) $opt['declared_value'] > 0 && $delivery->type !== DeliveryData::TYPE_LOCKER ) {
-			$services['declaredValueAmount']   = round( (float) $opt['declared_value'], 2 );
+		// Обявена стойност: само стоката (без доставката, която получателят плаща на куриера).
+		$declared = ! empty( $opt['declared_value'] ) ? round( (float) $opt['declared_value'] - $receiver_amount, 2 ) : 0.0;
+		if ( $declared > 0 && $delivery->type !== DeliveryData::TYPE_LOCKER ) {
+			$services['declaredValueAmount']   = $declared;
 			$services['declaredValueCurrency'] = $currency;
 		}
 		if ( ! empty( $opt['sms_notification'] ) ) {

@@ -129,6 +129,23 @@ final class EcontLabelBuilderTest extends TestCase {
 		$this->assertSame( 128.0, $label['services']['cdAmount'] );
 	}
 
+	public function test_receiver_pays_shipping_keeps_packing_list_and_declared_value_on_goods(): void {
+		// Стока 109, доставка 2.50 → НП 109 (описът не получава ред „Доставка“), обявена стойност 109, получателят плаща 2.50.
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'order_total' => 111.5, 'options' => [
+			'packing_list'           => true,
+			'receiver_pays_shipping' => true,
+			'receiver_amount'        => 2.5,
+			'declared_value'         => 111.5,
+		] ] ) );
+
+		$this->assertSame( 109.0, $label['services']['cdAmount'] );
+		$this->assertSame( 109.0, $label['services']['declaredValueAmount'] );
+		$this->assertCount( 2, $label['packingList'] );
+		$this->assertSame( 2.5, $label['paymentReceiverAmount'] );
+		$this->assertSame( 'cash', $label['paymentReceiverMethod'] );
+		$this->assertSame( 'credit', $label['paymentSenderMethod'] );
+	}
+
 	public function test_free_shipping_with_receiver_pays_option_sends_no_receiver_method(): void {
 		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [ 'receiver_pays_shipping' => true, 'receiver_amount' => 0 ] ] ) );
 		$this->assertArrayNotHasKey( 'paymentReceiverMethod', $label );
