@@ -49,7 +49,7 @@ final class EcontSearchController {
 		] );
 	}
 
-	private function respond( array $data, int $max_age = 3600 ): \WP_REST_Response {
+	private function respond( array $data, int $max_age = 600 ): \WP_REST_Response {
 		$r = new \WP_REST_Response( $data );
 		$r->header( 'Cache-Control', 'public, max-age=' . $max_age );
 		return $r;

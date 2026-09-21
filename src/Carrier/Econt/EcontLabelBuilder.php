@@ -153,9 +153,14 @@ final class EcontLabelBuilder {
 		}
 
 		// Опис на стоките (Еконт го иска заедно с или вместо номер на фактура при споразумение за НП).
+		// При наложен платеж сумата по описа трябва да е равна на наложения платеж, иначе Еконт отказва.
 		if ( ! empty( $opt['packing_list'] ) && $items ) {
+			$list = self::packing_list( $items, (float) ( $def['default_weight'] ?? 0.5 ) );
+			if ( isset( $services['cdAmount'] ) ) {
+				$list = self::balance_packing_list( $list, (float) $services['cdAmount'], (string) ( $opt['shipping_row_label'] ?? 'Доставка' ) );
+			}
 			$label['packingListType'] = 'digital';
-			$label['packingList']     = self::packing_list( $items, (float) ( $def['default_weight'] ?? 0.5 ) );
+			$label['packingList']     = $list;
 		}
 
 		// Преглед или тест на стоката преди плащане.
@@ -180,6 +185,39 @@ final class EcontLabelBuilder {
 		}
 
 		return $label;
+	}
+
+	/**
+	 * Изравнява описа с наложения платеж: разликата (доставка, такси, закръгления) става отделен ред,
+	 * а отрицателна разлика (отстъпка на ниво поръчка) се приспада от последния ред с една бройка.
+	 */
+	public static function balance_packing_list( array $list, float $cd_amount, string $label = 'Доставка' ): array {
+		$sum  = 0.0;
+		foreach ( $list as $row ) {
+			$sum += round( (float) $row['price'] * (int) $row['count'], 2 );
+		}
+		$diff = round( $cd_amount - $sum, 2 );
+		if ( abs( $diff ) < 0.01 ) {
+			return $list;
+		}
+		if ( $diff > 0 ) {
+			$list[] = [ 'inventoryNum' => (string) ( count( $list ) + 1 ), 'description' => $label, 'weight' => 0, 'count' => 1, 'price' => $diff ];
+			return $list;
+		}
+		// Отстъпка: последният ред се разделя така, че една бройка да поеме разликата (цената не може да е отрицателна).
+		$last = count( $list ) - 1;
+		if ( $last < 0 ) {
+			return $list;
+		}
+		if ( (int) $list[ $last ]['count'] > 1 ) {
+			$row = $list[ $last ];
+			$list[ $last ]['count'] = (int) $row['count'] - 1;
+			$list[ $last ]['weight'] = round( (float) $row['weight'] * ( (int) $row['count'] - 1 ) / (int) $row['count'], 3 );
+			$list[] = [ 'inventoryNum' => (string) ( count( $list ) + 1 ), 'description' => $row['description'], 'weight' => round( (float) $row['weight'] / (int) $row['count'], 3 ), 'count' => 1, 'price' => (float) $row['price'] ];
+			$last = count( $list ) - 1;
+		}
+		$list[ $last ]['price'] = round( max( 0, (float) $list[ $last ]['price'] + $diff ), 2 );
+		return $list;
 	}
 
 	/** Опис за Еконт: по ред за всеки артикул, цена за брой. */

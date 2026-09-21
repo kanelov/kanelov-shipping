@@ -3,7 +3,7 @@
  * Plugin Name: Kanelov Shipping (Еконт и други куриери)
  * Plugin URI: https://github.com/kanelov
  * Description: Доставка с Еконт (офис, Еконтомат, адрес) за WooCommerce с генериране на товарителници. Подготвен за добавяне на други куриери.
- * Version: 0.3.1
+ * Version: 0.3.2
  * Author: Kanelov
  * Text Domain: kanelov-shipping
  * Domain Path: /languages
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KS_VERSION', '0.3.1' );
+define( 'KS_VERSION', '0.3.2' );
 define( 'KS_FILE', __FILE__ );
 define( 'KS_DIR', __DIR__ );
 define( 'KS_URL', plugin_dir_url( __FILE__ ) );

@@ -2,6 +2,7 @@
 namespace Kanelov\Shipping\Checkout;
 
 use Kanelov\Shipping\Carrier\DeliveryData;
+use Kanelov\Shipping\Carrier\Econt\EcontNomenclature;
 use Kanelov\Shipping\Carrier\Econt\EcontSettings;
 use Kanelov\Shipping\Carrier\Econt\EcontShippingMethod;
 use Kanelov\Shipping\Rest\EcontSearchController;
@@ -21,6 +22,7 @@ final class DeliveryFormView {
 		return [
 			'rest'     => esc_url_raw( rest_url( EcontSearchController::NS . '/econt/' ) ),
 			'methodId' => EcontShippingMethod::ID,
+			'sync'     => (int) ( ( new EcontNomenclature() )->last_sync()['offices']['time'] ?? 0 ), // обезсилва кеша след синхронизация
 			'map'      => $settings->map_enabled() ? [
 				'js'  => KS_URL . 'assets/vendor/leaflet/leaflet.js',
 				'css' => KS_URL . 'assets/vendor/leaflet/leaflet.css',

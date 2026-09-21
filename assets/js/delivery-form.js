@@ -63,6 +63,7 @@
 		function api(path, params) {
 			var url = new URL(opts.rest + path);
 			Object.keys(params || {}).forEach(function (k) { url.searchParams.set(k, params[k]); });
+			if (opts.sync) url.searchParams.set('s', opts.sync);
 			return fetch(url.toString(), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; });
 		}
 		var els = {

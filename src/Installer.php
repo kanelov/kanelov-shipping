@@ -27,10 +27,19 @@ final class Installer {
 		}
 	}
 
+	const VERSION_OPTION = 'ks_version';
+
 	public static function maybe_upgrade(): void {
 		if ( get_option( self::DB_VERSION_OPTION ) !== self::DB_VERSION ) {
 			self::create_tables();
 			update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
+		}
+		// Нова версия на плъгина: офисите и Еконтоматите се обновяват сами (напр. нови полета като координати).
+		if ( get_option( self::VERSION_OPTION ) !== KS_VERSION ) {
+			update_option( self::VERSION_OPTION, KS_VERSION );
+			if ( function_exists( 'as_enqueue_async_action' ) ) {
+				( new EcontNomenclature() )->sync_now();
+			}
 		}
 	}
 

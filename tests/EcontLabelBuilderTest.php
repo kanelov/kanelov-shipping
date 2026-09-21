@@ -153,7 +153,7 @@ final class EcontLabelBuilderTest extends TestCase {
 		] ] ) );
 
 		$this->assertSame( 'digital', $label['packingListType'] );
-		$this->assertCount( 2, $label['packingList'] );
+		$this->assertCount( 3, $label['packingList'], 'два артикула + ред за разликата до наложения платеж' );
 		$this->assertSame( [ 'inventoryNum' => '1', 'description' => 'Картина „Море“ 60x90', 'weight' => 1.2, 'count' => 1, 'price' => 89.0 ], $label['packingList'][0] );
 		$this->assertSame( 2, $label['packingList'][1]['count'] );
 		$this->assertSame( 1.0, $label['packingList'][1]['weight'], 'две бройки по тегло по подразбиране 0.5' );
@@ -163,6 +163,36 @@ final class EcontLabelBuilderTest extends TestCase {
 		$this->assertArrayNotHasKey( 'payAfterTest', $label );
 		$this->assertSame( 'halfday', $label['holidayDeliveryDay'] );
 		$this->assertSame( [ [ 'id' => 704594, 'type' => 'return' ] ], $label['instructions'], 'невалиден тип и id 0 отпадат' );
+	}
+
+	public function test_packing_list_gets_a_delivery_row_so_it_matches_cod(): void {
+		// Артикули 89 + 20 (ред от 2 бр.) = 109; наложен платеж 111.50 → ред „Доставка“ 2.50.
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'order_total' => 111.5, 'options' => [ 'packing_list' => true ] ] ) );
+
+		$rows = $label['packingList'];
+		$this->assertCount( 3, $rows );
+		$this->assertSame( 'Доставка', $rows[2]['description'] );
+		$this->assertSame( 2.5, $rows[2]['price'] );
+		$sum = array_sum( array_map( static fn( $r ) => $r['price'] * $r['count'], $rows ) );
+		$this->assertEqualsWithDelta( $label['services']['cdAmount'], $sum, 0.001 );
+	}
+
+	public function test_packing_list_absorbs_order_level_discount(): void {
+		// Артикули 109, наложен платеж 100: отстъпка 9 → последният ред (2×10) се разделя и една бройка поема разликата.
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'order_total' => 100.0, 'options' => [ 'packing_list' => true ] ] ) );
+
+		$rows = $label['packingList'];
+		$this->assertCount( 3, $rows );
+		$this->assertSame( 1, $rows[1]['count'] );
+		$this->assertSame( 1.0, $rows[2]['price'] );
+		$sum = array_sum( array_map( static fn( $r ) => $r['price'] * $r['count'], $rows ) );
+		$this->assertEqualsWithDelta( 100.0, $sum, 0.001 );
+	}
+
+	public function test_packing_list_is_not_balanced_without_cod(): void {
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'is_cod' => false, 'options' => [ 'packing_list' => true ] ] ) );
+
+		$this->assertCount( 2, $label['packingList'] );
 	}
 
 	public function test_defaults_have_no_packing_list_or_instructions(): void {

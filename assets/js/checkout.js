@@ -146,7 +146,7 @@
 			var officeInput = root.querySelector('.ks-office'), sel = root.querySelector('.ks-office-selected');
 			if (saved.office_code) { officeInput.value = saved.office_name; sel.hidden = false; sel.textContent = '✓ ' + saved.office_name; }
 		}
-		form = KSDeliveryForm.mount(root, { rest: cfg.rest, i18n: cfg.i18n, map: cfg.map, getType: getType, onChange: function () { remember(); refreshSteps(); } });
+		form = KSDeliveryForm.mount(root, { rest: cfg.rest, sync: cfg.sync, i18n: cfg.i18n, map: cfg.map, getType: getType, onChange: function () { remember(); refreshSteps(); } });
 		root.addEventListener('input', refreshSteps);
 
 		/* Карта на куриер: избира ставката му; WooCommerce обновява прегледа при change. */
