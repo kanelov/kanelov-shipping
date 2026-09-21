@@ -6,15 +6,21 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Временна диагностика: записва фатални грешки и следа по ключовите стъпки на админ заявките
  * в wp-content/uploads/kanelov-shipping-diag.log (само за влезли потребители в wp-admin).
- * Без тайни данни в лога. Изключва се с константа KS_DIAG = false в wp-config.php.
+ * Изключена по подразбиране; включва се с define( 'KS_DIAG', true ) в wp-config.php. Без тайни данни в лога.
  */
 final class Diagnostics {
 
 	private static float $start = 0.0;
 	private static string $file = '';
 
+	/** Пътят до лога (за изтриване при обновяване). */
+	public static function log_path(): string {
+		$uploads = wp_get_upload_dir();
+		return trailingslashit( (string) ( $uploads['basedir'] ?? WP_CONTENT_DIR ) ) . 'kanelov-shipping-diag.log';
+	}
+
 	public static function register(): void {
-		if ( defined( 'KS_DIAG' ) && ! KS_DIAG ) {
+		if ( ! defined( 'KS_DIAG' ) || ! KS_DIAG ) {
 			return;
 		}
 		self::$start = microtime( true );

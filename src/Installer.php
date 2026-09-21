@@ -37,6 +37,9 @@ final class Installer {
 		// Нова версия на плъгина: офисите и Еконтоматите се обновяват сами (напр. нови полета като координати).
 		if ( get_option( self::VERSION_OPTION ) !== KS_VERSION ) {
 			update_option( self::VERSION_OPTION, KS_VERSION );
+			if ( ( ! defined( 'KS_DIAG' ) || ! KS_DIAG ) && file_exists( Diagnostics::log_path() ) ) {
+				@unlink( Diagnostics::log_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors -- диагностичният лог не е нужен без KS_DIAG
+			}
 			if ( function_exists( 'as_enqueue_async_action' ) ) {
 				( new EcontNomenclature() )->sync_now();
 			}

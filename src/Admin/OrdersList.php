@@ -41,6 +41,13 @@ final class OrdersList {
 		return wp_nonce_url( admin_url( 'admin-post.php?action=' . self::SINGLE . '&order=' . $order_id ), self::SINGLE . '_' . $order_id );
 	}
 
+	public function assets(): void {
+		$screen = get_current_screen();
+		if ( $screen && in_array( $screen->id, [ 'edit-shop_order', 'woocommerce_page_wc-orders' ], true ) ) {
+			wp_enqueue_style( 'ks-admin', KS_URL . 'assets/css/admin.css', [], KS_VERSION );
+		}
+	}
+
 	public function columns( array $columns ): array {
 		$out = [];
 		foreach ( $columns as $key => $label ) {
