@@ -181,7 +181,7 @@ final class EcontSettings {
 
 	/** Клиентът избира деня в чекаута (само до адрес). */
 	public function holiday_choice_checkout(): bool {
-		return $this->bool( 'holiday_choice_checkout', true );
+		return $this->bool( 'holiday_choice_checkout', false );
 	}
 
 	/** Id-та на избраните инструкции от профила. */

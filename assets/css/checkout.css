@@ -57,7 +57,7 @@ body.ks-hide-rates #shipping_method li.ks-current input[type="radio"] { display:
 .ks-section--door { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 12px; }
 .ks-section--door .form-row { float: none; clear: none; width: auto; margin-left: 0; margin-right: 0; min-width: 0; }
 .ks-section--door .form-row label { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ks-section--door .form-row input { width: 100%; }
+.ks-section--door .form-row input:not([type="radio"]) { width: 100%; }
 .ks-span-2 { grid-column: span 2; }
 .ks-span-4 { grid-column: span 4; }
 .ks-span-6 { grid-column: span 6; }
@@ -65,6 +65,8 @@ body.ks-hide-rates #shipping_method li.ks-current input[type="radio"] { display:
 .ks-delivery-day .ks-step__label { font-weight: 500; white-space: normal; }
 .ks-radio-row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 .ks-radio-row label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; cursor: pointer; }
+.ks-radio-row input[type="radio"] { width: auto; margin: 0; flex: none; }
+.ks-radio-row label span { display: inline; font-size: inherit; }
 
 /* Падащ списък за търсене */
 .ks-combo { position: relative; }

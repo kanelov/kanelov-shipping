@@ -122,7 +122,7 @@ final class ClassicCheckout {
 						$options[ $type ] = [
 							'label' => (string) $o['label'],
 							'cost'  => (float) $o['cost'],
-							'price' => (float) $o['cost'] > 0 ? wp_strip_all_tags( wc_price( (float) $o['cost'] ) ) : __( 'безплатно', 'kanelov-shipping' ),
+							'price' => (float) $o['cost'] > 0 ? html_entity_decode( wp_strip_all_tags( wc_price( (float) $o['cost'] ) ), ENT_QUOTES, 'UTF-8' ) : __( 'безплатно', 'kanelov-shipping' ), // чист текст: JS го слага с textContent
 						];
 					}
 					break 2;

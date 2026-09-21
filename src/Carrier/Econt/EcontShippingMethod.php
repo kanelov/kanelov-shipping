@@ -338,7 +338,8 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 					'title'   => __( 'Избор на ден в чекаута', 'kanelov-shipping' ),
 					'type'    => 'checkbox',
 					'label'   => __( 'Клиентът избира събота или първи работен ден при доставка до адрес', 'kanelov-shipping' ),
-					'default' => 'yes',
+					'default' => 'no',
+					'description' => __( 'Изключено: денят се взима от настройката по-горе, а за всяка пратка може да се смени в поръчката.', 'kanelov-shipping' ),
 				],
 				'instructions' => [
 					'title'       => __( 'Инструкции към куриера', 'kanelov-shipping' ),

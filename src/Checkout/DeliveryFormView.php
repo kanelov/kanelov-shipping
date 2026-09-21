@@ -165,8 +165,8 @@ final class DeliveryFormView {
 				<fieldset class="form-row ks-span-6 ks-delivery-day">
 					<legend class="ks-step__label"><?php esc_html_e( 'Ако доставката се падне в почивен ден', 'kanelov-shipping' ); ?></legend>
 					<span class="ks-radio-row">
-						<label><input type="radio" name="<?php echo esc_attr( $f( 'delivery_day' ) ); ?>" value="workday" <?php checked( $day, 'workday' ); ?>> <?php esc_html_e( 'в първия работен ден', 'kanelov-shipping' ); ?></label>
-						<label><input type="radio" name="<?php echo esc_attr( $f( 'delivery_day' ) ); ?>" value="halfday" <?php checked( $day, 'halfday' ); ?>> <?php esc_html_e( 'в събота', 'kanelov-shipping' ); ?></label>
+						<label><input type="radio" name="<?php echo esc_attr( $f( 'delivery_day' ) ); ?>" value="workday" <?php checked( $day, 'workday' ); ?>><span><?php esc_html_e( 'в първия работен ден', 'kanelov-shipping' ); ?></span></label>
+						<label><input type="radio" name="<?php echo esc_attr( $f( 'delivery_day' ) ); ?>" value="halfday" <?php checked( $day, 'halfday' ); ?>><span><?php esc_html_e( 'в събота', 'kanelov-shipping' ); ?></span></label>
 					</span>
 				</fieldset>
 			<?php endif; ?>

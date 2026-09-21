@@ -2,6 +2,7 @@
 namespace Kanelov\Shipping;
 
 use Kanelov\Shipping\Carrier\Econt\EcontNomenclature;
+use Kanelov\Shipping\Carrier\Econt\EcontSettings;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -35,8 +36,10 @@ final class Installer {
 			update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 		}
 		// Нова версия на плъгина: офисите и Еконтоматите се обновяват сами (напр. нови полета като координати).
-		if ( get_option( self::VERSION_OPTION ) !== KS_VERSION ) {
+		$installed = (string) get_option( self::VERSION_OPTION, '' );
+		if ( $installed !== KS_VERSION ) {
 			update_option( self::VERSION_OPTION, KS_VERSION );
+			self::migrate( $installed );
 			if ( ( ! defined( 'KS_DIAG' ) || ! KS_DIAG ) && file_exists( Diagnostics::log_path() ) ) {
 				@unlink( Diagnostics::log_path() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors -- диагностичният лог не е нужен без KS_DIAG
 			}
@@ -46,6 +49,18 @@ final class Installer {
 					( new EcontNomenclature() )->sync_now();
 				}
 			}, 20 );
+		}
+	}
+
+	/** Еднократни промени по записаните настройки при обновяване от по-стара версия. */
+	private static function migrate( string $from ): void {
+		// До 0.4.2 изборът на ден в чекаута беше включен по подразбиране; вече се решава от магазина за всяка пратка.
+		if ( $from !== '' && version_compare( $from, '0.4.3', '<' ) ) {
+			$settings = (array) get_option( EcontSettings::OPTION, [] );
+			if ( ( $settings['holiday_choice_checkout'] ?? '' ) === 'yes' ) {
+				$settings['holiday_choice_checkout'] = 'no';
+				update_option( EcontSettings::OPTION, $settings );
+			}
 		}
 	}
 
