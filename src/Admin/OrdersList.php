@@ -17,7 +17,6 @@ final class OrdersList {
 	const COLUMN = 'ks_shipment';
 	const BULK   = 'ks_create_labels';
 	const SINGLE = 'ks_create_label';
-	const PDF    = 'ks_label_pdf';
 
 	public function register(): void {
 		foreach ( [ 'manage_edit-shop_order_columns', 'manage_woocommerce_page_wc-orders_columns' ] as $hook ) {
@@ -35,49 +34,6 @@ final class OrdersList {
 		add_action( 'admin_notices', [ $this, 'bulk_notice' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'assets' ] );
 		add_action( 'admin_post_' . self::SINGLE, [ $this, 'handle_single' ] );
-		add_action( 'admin_post_' . self::PDF, [ $this, 'handle_pdf' ] );
-	}
-
-	/** Етикетът за печат се сваля от Еконт през сайта, за да се отваря винаги (без http/https проблеми). */
-	public static function pdf_url( int $order_id ): string {
-		return wp_nonce_url( admin_url( 'admin-post.php?action=' . self::PDF . '&order=' . $order_id ), self::PDF . '_' . $order_id );
-	}
-
-	public function handle_pdf(): void {
-		$order_id = (int) ( $_GET['order'] ?? 0 ); // phpcs:ignore WordPress.Security.NonceVerification -- проверява се по-долу.
-		check_admin_referer( self::PDF . '_' . $order_id );
-		if ( ! current_user_can( 'edit_shop_orders' ) ) {
-			wp_die( esc_html__( 'Нямате права.', 'kanelov-shipping' ) );
-		}
-		$order    = wc_get_order( $order_id );
-		$shipment = $order ? OrderMeta::get_shipment( $order ) : [];
-		$url      = (string) ( $shipment['pdf_url'] ?? '' );
-		if ( $url === '' ) {
-			wp_die( esc_html__( 'Поръчката няма товарителница с етикет.', 'kanelov-shipping' ) );
-		}
-		$res = wp_remote_get( $url, [ 'timeout' => 30 ] );
-		if ( is_wp_error( $res ) || wp_remote_retrieve_response_code( $res ) !== 200 || stripos( (string) wp_remote_retrieve_header( $res, 'content-type' ), 'pdf' ) === false ) {
-			wp_safe_redirect( $url ); // резервен вариант: директно към Еконт
-			exit;
-		}
-		nocache_headers();
-		header( 'Content-Type: application/pdf' );
-		header( 'Content-Disposition: inline; filename="econt-' . sanitize_file_name( (string) ( $shipment['number'] ?? $order_id ) ) . '.pdf"' );
-		header( 'Content-Length: ' . strlen( wp_remote_retrieve_body( $res ) ) );
-		echo wp_remote_retrieve_body( $res ); // phpcs:ignore WordPress.Security.EscapeOutput -- двоичен PDF.
-		exit;
-	}
-
-	/** Линк за бърза товарителница от списъка (със стандартните настройки). */
-	public static function single_url( int $order_id ): string {
-		return wp_nonce_url( admin_url( 'admin-post.php?action=' . self::SINGLE . '&order=' . $order_id ), self::SINGLE . '_' . $order_id );
-	}
-
-	public function assets(): void {
-		$screen = get_current_screen();
-		if ( $screen && in_array( $screen->id, [ 'edit-shop_order', 'woocommerce_page_wc-orders' ], true ) ) {
-			wp_enqueue_style( 'ks-admin', KS_URL . 'assets/css/admin.css', [], KS_VERSION );
-		}
 	}
 
 	public function columns( array $columns ): array {
@@ -121,7 +77,7 @@ final class OrdersList {
 		if ( ! empty( $shipment['number'] ) ) {
 			printf(
 				'<a href="%s" target="_blank" rel="noopener">%s</a>%s',
-				esc_url( ! empty( $shipment['pdf_url'] ) ? self::pdf_url( $order->get_id() ) : EcontCarrier::tracking_url( $shipment['number'] ) ),
+				esc_url( ! empty( $shipment['pdf_url'] ) ? $shipment['pdf_url'] : EcontCarrier::tracking_url( $shipment['number'] ) ),
 				esc_html( $shipment['number'] ),
 				! empty( $shipment['status'] ) ? '<span class="ks-mini">' . esc_html( $shipment['status'] ) . '</span>' : ''
 			);

@@ -1,6 +1,7 @@
 <?php
 namespace Kanelov\Shipping;
 
+use Kanelov\Shipping\Admin\Menu;
 use Kanelov\Shipping\Admin\OrderMetabox;
 use Kanelov\Shipping\Admin\OrdersList;
 use Kanelov\Shipping\Admin\SettingsActions;
@@ -51,6 +52,7 @@ final class Plugin {
 
 		if ( is_admin() ) {
 			( new Updater() )->register();
+			( new Menu() )->register();
 			( new SettingsActions() )->register();
 			( new OrderMetabox() )->register();
 			( new OrdersList() )->register();
