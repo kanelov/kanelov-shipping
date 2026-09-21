@@ -288,9 +288,9 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 				'invoice_num_from_order' => [
 					'title'       => __( 'Номер на фактура', 'kanelov-shipping' ),
 					'type'        => 'checkbox',
-					'label'       => __( 'Номерът на поръчката се подава като номер на фактура', 'kanelov-shipping' ),
-					'default'     => 'yes',
-					'description' => __( 'При споразумение за НП по департамент Еконт изисква номер на фактура или опис. Без това създаването на товарителница спира с грешка.', 'kanelov-shipping' ),
+					'label'       => __( 'Подавай номера на поръчката и датата ѝ като фактура (напр. 6333/21.09.2026)', 'kanelov-shipping' ),
+					'default'     => 'no',
+					'description' => __( 'При споразумение за НП Еконт изисква фактура или опис. Описът по-долу е достатъчен; включете фактурата само ако издавате фактура с номера на поръчката.', 'kanelov-shipping' ),
 				],
 				'packing_list' => [
 					'title'   => __( 'Опис на стоките', 'kanelov-shipping' ),

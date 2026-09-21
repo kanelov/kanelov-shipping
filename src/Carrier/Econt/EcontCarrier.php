@@ -97,6 +97,16 @@ final class EcontCarrier implements CarrierInterface {
 		return preg_match( '/^(ул|бул|пл|ж\.к|кв|алея|шосе|път|м-ст|местност)\.?\s/ui', $street ) ? '' : 'ул. ';
 	}
 
+	/** Номер на фактура за Еконт: „номер/дд.мм.гггг“ (Еконт изисква дата след номера). */
+	public static function invoice_num( \WC_Order $order, string $num = '' ): string {
+		$num = trim( $num ) ?: (string) $order->get_order_number();
+		if ( preg_match( '~[/ ]\d{1,2}\.\d{1,2}\.\d{2,4}$~', $num ) ) {
+			return $num;
+		}
+		$date = $order->get_date_created() ?: $order->get_date_modified();
+		return $num . '/' . ( $date ? $date->date_i18n( 'd.m.Y' ) : wp_date( 'd.m.Y' ) );
+	}
+
 	/** Събира всичко нужно за EcontLabelBuilder от поръчката и настройките. */
 	public function build_label( \WC_Order $order, array $options = [] ): array {
 		$settings = $this->settings();
@@ -164,7 +174,7 @@ final class EcontCarrier implements CarrierInterface {
 				'receiver_amount'         => (float) $order->get_shipping_total() + (float) $order->get_shipping_tax(),
 				'shipment_type'           => $settings->shipment_type(),
 				'declared_value'          => $settings->declared_value_threshold() > 0 && (float) $order->get_total() >= $settings->declared_value_threshold() ? (float) $order->get_total() : 0,
-				'invoice_num'             => $settings->invoice_num_from_order() ? $order->get_order_number() : '',
+				'invoice_num'             => $settings->invoice_num_from_order() ? self::invoice_num( $order ) : '',
 				'packing_list'            => $settings->packing_list(),
 				'pay_after'               => $settings->pay_after(),
 				'holiday_delivery_day'    => $delivery->delivery_day ?: $settings->holiday_delivery_day(),

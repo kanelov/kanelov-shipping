@@ -136,7 +136,7 @@ final class OrderMetabox {
 							<option value="workday" <?php selected( $holiday, 'workday' ); ?>><?php esc_html_e( 'Първи работен ден', 'kanelov-shipping' ); ?></option>
 							<option value="halfday" <?php selected( $holiday, 'halfday' ); ?>><?php esc_html_e( 'Събота', 'kanelov-shipping' ); ?></option>
 						</select></label></p>
-					<p class="form-row"><label><?php esc_html_e( 'Номер на фактура', 'kanelov-shipping' ); ?><input type="text" name="ks_opt_invoice_num" value="<?php echo esc_attr( $settings->invoice_num_from_order() ? $order->get_order_number() : '' ); ?>"></label></p>
+					<p class="form-row"><label><?php esc_html_e( 'Номер на фактура', 'kanelov-shipping' ); ?><input type="text" name="ks_opt_invoice_num" value="<?php echo esc_attr( $settings->invoice_num_from_order() ? EcontCarrier::invoice_num( $order ) : '' ); ?>" placeholder="<?php esc_attr_e( 'номер/дд.мм.гггг (по избор)', 'kanelov-shipping' ); ?>"></label></p>
 				</div>
 				<p class="form-row ks-checks">
 					<label><input type="checkbox" name="ks_opt_sms_notification" value="1" <?php checked( $settings->sms_notification() ); ?>> <?php esc_html_e( 'SMS до получателя', 'kanelov-shipping' ); ?></label>
@@ -260,7 +260,7 @@ final class OrderMetabox {
 			'sms_notification' => ! empty( $fields['ks_opt_sms_notification'] ),
 			'declared_value'   => ! empty( $fields['ks_opt_declared'] ) ? (float) $order->get_total() : 0,
 			'packing_list'     => ! empty( $fields['ks_opt_packing_list'] ),
-			'invoice_num'      => sanitize_text_field( (string) ( $fields['ks_opt_invoice_num'] ?? '' ) ),
+			'invoice_num'      => trim( (string) ( $fields['ks_opt_invoice_num'] ?? '' ) ) !== '' ? EcontCarrier::invoice_num( $order, sanitize_text_field( (string) $fields['ks_opt_invoice_num'] ) ) : '',
 			'pay_after'        => in_array( $fields['ks_opt_pay_after'] ?? '', [ 'accept', 'test' ], true ) ? $fields['ks_opt_pay_after'] : '',
 			'holiday_delivery_day' => ( $fields['ks_opt_holiday'] ?? '' ) === 'halfday' ? 'halfday' : 'workday',
 			'instructions'     => ( new EcontProfile( $settings ) )->instructions_for( array_map( 'intval', (array) ( $fields['ks_opt_instructions'] ?? [] ) ) ),

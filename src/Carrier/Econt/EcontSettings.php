@@ -139,7 +139,7 @@ final class EcontSettings {
 
 	/** Номер на фактура в товарителницата = номер на поръчката. */
 	public function invoice_num_from_order(): bool {
-		return $this->bool( 'invoice_num_from_order', true );
+		return $this->bool( 'invoice_num_from_order', false );
 	}
 
 	/** Опис на стоките (digital packing list) при наложен платеж. */
