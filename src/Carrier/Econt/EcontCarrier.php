@@ -237,7 +237,7 @@ final class EcontCarrier implements CarrierInterface {
 		$r = LabelResult::ok( $response );
 		$l = (array) ( $response['label'] ?? [] );
 		$r->shipment_number = (string) ( $l['shipmentNumber'] ?? '' );
-		$r->pdf_url         = (string) ( $l['pdfURL'] ?? '' );
+		$r->pdf_url         = preg_replace( '~^http://~i', 'https://', (string) ( $l['pdfURL'] ?? '' ) );
 		$r->total_price     = isset( $l['totalPrice'] ) ? (float) $l['totalPrice'] : null;
 		$r->sender_due      = isset( $l['senderDueAmount'] ) ? (float) $l['senderDueAmount'] : null;
 		$r->receiver_due    = isset( $l['receiverDueAmount'] ) ? (float) $l['receiverDueAmount'] : null;

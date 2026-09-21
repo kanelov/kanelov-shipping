@@ -27,7 +27,14 @@ final class OrderMeta {
 
 	public static function get_shipment( \WC_Order $order ): array {
 		$data = $order->get_meta( self::SHIPMENT, true );
-		return is_array( $data ) ? $data : [];
+		if ( ! is_array( $data ) ) {
+			return [];
+		}
+		// Еконт връща адреса на PDF по http; на https сайт браузърът го блокира.
+		if ( ! empty( $data['pdf_url'] ) ) {
+			$data['pdf_url'] = preg_replace( '~^http://~i', 'https://', (string) $data['pdf_url'] );
+		}
+		return $data;
 	}
 
 	public static function set_shipment( \WC_Order $order, array $shipment ): void {

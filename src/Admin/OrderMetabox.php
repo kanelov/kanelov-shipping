@@ -89,7 +89,7 @@ final class OrderMetabox {
 				<?php endif; ?>
 				<p class="ks-actions">
 					<?php if ( ! empty( $shipment['pdf_url'] ) ) : ?>
-						<a class="button button-primary" href="<?php echo esc_url( $shipment['pdf_url'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Печат PDF', 'kanelov-shipping' ); ?></a>
+						<a class="button button-primary" href="<?php echo esc_url( OrdersList::pdf_url( $order->get_id() ) ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Печат PDF', 'kanelov-shipping' ); ?></a>
 					<?php endif; ?>
 					<button type="button" class="button ks-do" data-do="track"><?php esc_html_e( 'Проследи', 'kanelov-shipping' ); ?></button>
 					<button type="button" class="button ks-do ks-do--danger" data-do="delete"><?php esc_html_e( 'Изтрий товарителницата', 'kanelov-shipping' ); ?></button>
