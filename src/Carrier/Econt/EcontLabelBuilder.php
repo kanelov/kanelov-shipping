@@ -19,7 +19,7 @@ use Kanelov\Shipping\Support\Text;
  *            invoice_before_pay_cd, cd_pay_options_template, sender_payment_method,
  *            receiver_pays_shipping, receiver_amount, invoice_num, packing_list (bool),
  *            pay_after ('' | accept | test), holiday_delivery_day (workday | halfday),
- *            instructions ([ [id, type], ... ])
+ *            instructions ([ [id, type], ... ]), dimensions ([Д, Ш, В] в см)
  *  defaults: default_weight, min_weight, description_mode, description_max_length
  */
 final class EcontLabelBuilder {
@@ -97,6 +97,12 @@ final class EcontLabelBuilder {
 		$label['packCount']    = max( 1, (int) ( $opt['pack_count'] ?? 1 ) );
 		$label['shipmentType'] = (string) ( $opt['shipment_type'] ?? 'pack' );
 		$label['weight']       = round( $weight, 3 );
+		$dims = array_values( array_map( 'floatval', (array) ( $opt['dimensions'] ?? [] ) ) );
+		if ( count( $dims ) === 3 && min( $dims ) > 0 ) {
+			$label['shipmentDimensionsL'] = round( $dims[0], 1 );
+			$label['shipmentDimensionsW'] = round( $dims[1], 1 );
+			$label['shipmentDimensionsH'] = round( $dims[2], 1 );
+		}
 		$label['shipmentDescription'] = self::description(
 			$items,
 			(string) ( $in['order_number'] ?? '' ),

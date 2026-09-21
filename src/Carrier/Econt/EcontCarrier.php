@@ -97,6 +97,38 @@ final class EcontCarrier implements CarrierInterface {
 		return preg_match( '/^(ул|бул|пл|ж\.к|кв|алея|шосе|път|м-ст|местност)\.?\s/ui', $street ) ? '' : 'ул. ';
 	}
 
+	/**
+	 * Размери на пратката в см от продуктите: най-голямата дължина и ширина, височините се събират (наредени един върху друг).
+	 * Ако нито един продукт няма размери, се ползват тези от настройките; иначе null (без размери).
+	 */
+	public static function order_dimensions( \WC_Order $order, EcontSettings $settings ): ?array {
+		$l = 0.0;
+		$w = 0.0;
+		$h = 0.0;
+		foreach ( $order->get_items() as $item ) {
+			if ( ! $item instanceof \WC_Order_Item_Product ) {
+				continue;
+			}
+			$p = $item->get_product();
+			if ( ! $p || $p->is_virtual() || ! $p->has_dimensions() ) {
+				continue;
+			}
+			$pl = (float) wc_get_dimension( (float) $p->get_length(), 'cm' );
+			$pw = (float) wc_get_dimension( (float) $p->get_width(), 'cm' );
+			$ph = (float) wc_get_dimension( (float) $p->get_height(), 'cm' );
+			if ( $pl <= 0 || $pw <= 0 || $ph <= 0 ) {
+				continue;
+			}
+			$l  = max( $l, $pl );
+			$w  = max( $w, $pw );
+			$h += $ph * max( 1, (int) $item->get_quantity() );
+		}
+		if ( $l > 0 && $w > 0 && $h > 0 ) {
+			return [ round( $l, 1 ), round( $w, 1 ), round( $h, 1 ) ];
+		}
+		return $settings->default_dimensions();
+	}
+
 	/** Номер на фактура за Еконт: „номер/дд.мм.гггг“ (Еконт изисква дата след номера). */
 	public static function invoice_num( \WC_Order $order, string $num = '' ): string {
 		$num = trim( $num ) ?: (string) $order->get_order_number();
@@ -173,7 +205,8 @@ final class EcontCarrier implements CarrierInterface {
 				'receiver_pays_shipping'  => $settings->receiver_pays_shipping(),
 				'receiver_amount'         => (float) $order->get_shipping_total() + (float) $order->get_shipping_tax(),
 				'shipment_type'           => $settings->shipment_type(),
-				'declared_value'          => $settings->declared_value_threshold() > 0 && (float) $order->get_total() >= $settings->declared_value_threshold() ? (float) $order->get_total() : 0,
+				'declared_value'          => $settings->declared_value_for( (float) $order->get_total() ),
+				'dimensions'              => self::order_dimensions( $order, $settings ),
 				'invoice_num'             => $settings->invoice_num_from_order() ? self::invoice_num( $order ) : '',
 				'packing_list'            => $settings->packing_list(),
 				'pay_after'               => $settings->pay_after(),

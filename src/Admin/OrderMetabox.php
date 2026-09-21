@@ -115,6 +115,13 @@ final class OrderMetabox {
 				<div class="ks-grid">
 					<p class="form-row"><label><?php esc_html_e( 'Тегло (кг)', 'kanelov-shipping' ); ?><input type="number" step="0.001" min="0.1" name="ks_opt_weight" value="<?php echo esc_attr( (string) $weight ); ?>"></label></p>
 					<p class="form-row"><label><?php esc_html_e( 'Пакети', 'kanelov-shipping' ); ?><input type="number" step="1" min="1" name="ks_opt_pack_count" value="1"></label></p>
+					<?php $dims = EcontCarrier::order_dimensions( $order, $settings ); ?>
+					<p class="form-row ks-dims"><label><?php esc_html_e( 'Размери Д×Ш×В (см)', 'kanelov-shipping' ); ?>
+						<span class="ks-dims__inputs">
+							<input type="number" step="0.1" min="0" name="ks_opt_dim_l" value="<?php echo esc_attr( $dims ? (string) $dims[0] : '' ); ?>" placeholder="Д">
+							<input type="number" step="0.1" min="0" name="ks_opt_dim_w" value="<?php echo esc_attr( $dims ? (string) $dims[1] : '' ); ?>" placeholder="Ш">
+							<input type="number" step="0.1" min="0" name="ks_opt_dim_h" value="<?php echo esc_attr( $dims ? (string) $dims[2] : '' ); ?>" placeholder="В">
+						</span></label></p>
 					<p class="form-row"><label><?php esc_html_e( 'Наложен платеж', 'kanelov-shipping' ); ?><input type="text" readonly value="<?php echo esc_attr( $order->get_payment_method() === 'cod' ? wc_format_decimal( $order->get_total(), 2 ) . ' ' . $order->get_currency() : __( 'няма (платена онлайн)', 'kanelov-shipping' ) ); ?>"></label></p>
 					<p class="form-row"><label><?php esc_html_e( 'Изпращане от', 'kanelov-shipping' ); ?>
 						<select name="ks_opt_send_from">
@@ -140,7 +147,7 @@ final class OrderMetabox {
 				</div>
 				<p class="form-row ks-checks">
 					<label><input type="checkbox" name="ks_opt_sms_notification" value="1" <?php checked( $settings->sms_notification() ); ?>> <?php esc_html_e( 'SMS до получателя', 'kanelov-shipping' ); ?></label>
-					<label><input type="checkbox" name="ks_opt_declared" value="1" <?php checked( $settings->declared_value_threshold() > 0 && (float) $order->get_total() >= $settings->declared_value_threshold() ); ?>> <?php esc_html_e( 'Обявена стойност', 'kanelov-shipping' ); ?></label>
+					<label><input type="checkbox" name="ks_opt_declared" value="1" <?php checked( $settings->declared_value_for( (float) $order->get_total() ) > 0 ); ?>> <?php esc_html_e( 'Обявена стойност', 'kanelov-shipping' ); ?></label>
 					<label><input type="checkbox" name="ks_opt_packing_list" value="1" <?php checked( $settings->packing_list() ); ?>> <?php esc_html_e( 'Опис на стоките', 'kanelov-shipping' ); ?></label>
 				</p>
 				<?php $instr = ( new EcontProfile( $settings ) )->instruction_choices(); ?>
@@ -260,6 +267,7 @@ final class OrderMetabox {
 			'sms_notification' => ! empty( $fields['ks_opt_sms_notification'] ),
 			'declared_value'   => ! empty( $fields['ks_opt_declared'] ) ? (float) $order->get_total() : 0,
 			'packing_list'     => ! empty( $fields['ks_opt_packing_list'] ),
+			'dimensions'       => [ (float) str_replace( ',', '.', (string) ( $fields['ks_opt_dim_l'] ?? 0 ) ), (float) str_replace( ',', '.', (string) ( $fields['ks_opt_dim_w'] ?? 0 ) ), (float) str_replace( ',', '.', (string) ( $fields['ks_opt_dim_h'] ?? 0 ) ) ],
 			'invoice_num'      => trim( (string) ( $fields['ks_opt_invoice_num'] ?? '' ) ) !== '' ? EcontCarrier::invoice_num( $order, sanitize_text_field( (string) $fields['ks_opt_invoice_num'] ) ) : '',
 			'pay_after'        => in_array( $fields['ks_opt_pay_after'] ?? '', [ 'accept', 'test' ], true ) ? $fields['ks_opt_pay_after'] : '',
 			'holiday_delivery_day' => ( $fields['ks_opt_holiday'] ?? '' ) === 'halfday' ? 'halfday' : 'workday',

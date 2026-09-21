@@ -277,11 +277,23 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 					'label'   => __( 'Куриерът показва фактурата/описа преди плащане', 'kanelov-shipping' ),
 					'default' => 'no',
 				],
+				'declared_value_mode' => [
+					'title'   => __( 'Обявена стойност', 'kanelov-shipping' ),
+					'type'    => 'select',
+					'default' => 'always',
+					'options' => [
+						'always'    => __( 'Винаги, равна на стойността на стоката', 'kanelov-shipping' ),
+						'threshold' => __( 'Само при поръчка над сумата по-долу', 'kanelov-shipping' ),
+						'never'     => __( 'Никога', 'kanelov-shipping' ),
+					],
+					'description' => __( 'Не се прилага за Еконтомат. Еконт таксува допълнително за обявена стойност.', 'kanelov-shipping' ),
+					'desc_tip'    => true,
+				],
 				'declared_value_threshold' => [
 					'title'       => __( 'Обявена стойност при поръчка над (€)', 'kanelov-shipping' ),
 					'type'        => 'price',
 					'default'     => '0',
-					'description' => __( '0 = без обявена стойност. Не се прилага за Еконтомат.', 'kanelov-shipping' ),
+					'description' => __( 'Ползва се само при „Само при поръчка над сумата“.', 'kanelov-shipping' ),
 					'desc_tip'    => true,
 				],
 
@@ -307,7 +319,7 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 				'pay_after' => [
 					'title'   => __( 'Преди плащане на НП', 'kanelov-shipping' ),
 					'type'    => 'select',
-					'default' => '',
+					'default' => 'accept',
 					'options' => [
 						''       => __( 'Без преглед', 'kanelov-shipping' ),
 						'accept' => __( 'Преглед на пратката', 'kanelov-shipping' ),
@@ -348,6 +360,14 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 					'title'       => __( 'Тегло по подразбиране за продукт без тегло (кг)', 'kanelov-shipping' ),
 					'type'        => 'decimal',
 					'default'     => '0.5',
+				],
+				'default_dimensions' => [
+					'title'       => __( 'Размери по подразбиране (см)', 'kanelov-shipping' ),
+					'type'        => 'text',
+					'default'     => '',
+					'placeholder' => '25x35x5',
+					'description' => __( 'Дължина x ширина x височина, ако продуктите нямат размери. Празно = без размери (Еконт смята само по тегло).', 'kanelov-shipping' ),
+					'desc_tip'    => true,
 				],
 				'min_weight' => [
 					'title'   => __( 'Минимално тегло на пратка (кг)', 'kanelov-shipping' ),

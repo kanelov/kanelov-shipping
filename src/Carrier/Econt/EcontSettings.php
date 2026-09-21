@@ -95,6 +95,27 @@ final class EcontSettings {
 		return $this->float( 'declared_value_threshold', 0 );
 	}
 
+	/** Обявена стойност за стока на дадена сума: always / threshold / never. */
+	public function declared_value_for( float $goods ): float {
+		$mode = (string) $this->get( 'declared_value_mode', 'always' );
+		if ( $mode === 'never' ) {
+			return 0.0;
+		}
+		if ( $mode === 'threshold' ) {
+			return $this->declared_value_threshold() > 0 && $goods >= $this->declared_value_threshold() ? $goods : 0.0;
+		}
+		return $goods;
+	}
+
+	/** Размери по подразбиране [Д, Ш, В] в см или null. */
+	public function default_dimensions(): ?array {
+		if ( preg_match( '~^\s*(\d+(?:[.,]\d+)?)\s*[xXхХ*]\s*(\d+(?:[.,]\d+)?)\s*[xXхХ*]\s*(\d+(?:[.,]\d+)?)\s*$~u', (string) $this->get( 'default_dimensions', '' ), $m ) ) {
+			$d = array_map( static fn( $v ) => (float) str_replace( ',', '.', $v ), [ $m[1], $m[2], $m[3] ] );
+			return min( $d ) > 0 ? $d : null;
+		}
+		return null;
+	}
+
 	public function invoice_before_pay_cd(): bool {
 		return $this->bool( 'invoice_before_pay_cd', false );
 	}
@@ -149,7 +170,7 @@ final class EcontSettings {
 
 	/** '' | 'accept' (преглед) | 'test' (тест на стоката) преди плащане. */
 	public function pay_after(): string {
-		$v = (string) $this->get( 'pay_after', '' );
+		$v = (string) $this->get( 'pay_after', 'accept' );
 		return in_array( $v, [ 'accept', 'test' ], true ) ? $v : '';
 	}
 

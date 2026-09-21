@@ -212,6 +212,16 @@ final class EcontLabelBuilderTest extends TestCase {
 		$this->assertCount( 2, $label['packingList'] );
 	}
 
+	public function test_dimensions_are_sent_only_when_complete(): void {
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [ 'dimensions' => [ 25, 35, 5.25 ] ] ] ) );
+		$this->assertSame( 25.0, $label['shipmentDimensionsL'] );
+		$this->assertSame( 35.0, $label['shipmentDimensionsW'] );
+		$this->assertSame( 5.3, $label['shipmentDimensionsH'] );
+
+		$label = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [ 'dimensions' => [ 25, 0, 5 ] ] ] ) );
+		$this->assertArrayNotHasKey( 'shipmentDimensionsL', $label );
+	}
+
 	public function test_defaults_have_no_packing_list_or_instructions(): void {
 		$label = ( new EcontLabelBuilder() )->build( $this->base_input() );
 

@@ -24,3 +24,5 @@
 .ks-col-shipment .ks-col-create { display: inline-block; margin: 2px 0 4px; }
 #ks-order .ks-checks label { display: inline-block; margin: 0 14px 6px 0; }
 #ks-order .ks-instructions label { display: block; margin: 0 0 4px; }
+#ks-order .ks-dims__inputs { display: flex; gap: 4px; }
+#ks-order .ks-dims__inputs input { width: 33%; min-width: 0; }
