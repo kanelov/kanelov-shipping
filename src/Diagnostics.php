@@ -30,7 +30,50 @@ final class Diagnostics {
 			add_action( $hook, static fn() => self::trace( $hook . ' start' ), -9999 );
 			add_action( $hook, static fn() => self::trace( $hook . ' end' ), 99999 );
 		}
+		// Кой прекъсва заявката: редирект или wp_die с кратка следа на стека.
+		add_filter( 'wp_redirect', static function ( $location ) {
+			self::write( 'REDIRECT | ' . (string) ( $_SERVER['REQUEST_URI'] ?? '' ) . ' | to ' . (string) $location . ' | ' . self::backtrace() );
+			return $location;
+		}, 1 );
+		add_filter( 'wp_die_handler', static function ( $handler ) {
+			self::write( 'WP_DIE | ' . (string) ( $_SERVER['REQUEST_URI'] ?? '' ) . ' | ' . self::backtrace() );
+			return $handler;
+		}, 1 );
+		// Кои функции са закачени на admin_enqueue_scripts и докъде стигат (по приоритети).
+		add_action( 'admin_enqueue_scripts', static function () {
+			global $wp_filter;
+			$list = [];
+			if ( isset( $wp_filter['admin_enqueue_scripts'] ) ) {
+				foreach ( $wp_filter['admin_enqueue_scripts']->callbacks as $prio => $cbs ) {
+					foreach ( $cbs as $cb ) {
+						$list[] = $prio . ':' . self::callback_name( $cb['function'] );
+					}
+				}
+			}
+			self::write( 'ENQUEUE CALLBACKS | ' . implode( ', ', $list ) );
+		}, -9998 );
+		foreach ( [ 0, 5, 9, 10, 11, 15, 20, 30, 50, 100, 999 ] as $prio ) {
+			add_action( 'admin_enqueue_scripts', static fn() => self::trace( 'admin_enqueue_scripts after prio ' . $prio ), $prio );
+		}
 		self::trace( 'plugins_loaded (boot)' );
+	}
+
+	private static function callback_name( $fn ): string {
+		if ( is_string( $fn ) ) {
+			return $fn;
+		}
+		if ( is_array( $fn ) ) {
+			return ( is_object( $fn[0] ) ? get_class( $fn[0] ) : (string) $fn[0] ) . '::' . (string) $fn[1];
+		}
+		return 'closure';
+	}
+
+	private static function backtrace(): string {
+		$out = [];
+		foreach ( array_slice( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 14 ), 2, 12 ) as $f ) {
+			$out[] = basename( (string) ( $f['file'] ?? '' ) ) . ':' . (string) ( $f['line'] ?? '' ) . ' ' . (string) ( $f['function'] ?? '' );
+		}
+		return implode( ' < ', $out );
 	}
 
 	public static function trace( string $point ): void {
