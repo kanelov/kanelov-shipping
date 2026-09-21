@@ -36,6 +36,7 @@ final class Plugin {
 	public function boot(): void {
 		load_plugin_textdomain( 'kanelov-shipping', false, dirname( plugin_basename( KS_FILE ) ) . '/languages' );
 
+		Diagnostics::register();
 		Installer::maybe_upgrade();
 
 		$this->carriers->register( new EcontCarrier() );
