@@ -7,6 +7,8 @@ final class LabelResult {
 	/** @var string[] */
 	public array $errors = [];
 	public string $shipment_number = '';
+	/** Пояснение при успех (напр. „вече не съществува в Еконт“). */
+	public string $message = '';
 	public string $pdf_url = '';
 	public ?float $total_price = null;
 	public ?float $sender_due = null;

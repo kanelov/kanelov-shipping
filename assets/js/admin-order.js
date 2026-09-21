@@ -53,6 +53,7 @@
 		$(box).on('click', '.ks-do', function () {
 			var action = this.dataset.do;
 			if (action === 'delete' && !window.confirm(cfg.i18nAdmin.confirmDelete)) return;
+			if (action === 'forget' && !window.confirm(cfg.i18nAdmin.confirmForget)) return;
 			run(action);
 		});
 	});

@@ -26,3 +26,5 @@
 #ks-order .ks-instructions label { display: block; margin: 0 0 4px; }
 #ks-order .ks-dims__inputs { display: flex; gap: 4px; }
 #ks-order .ks-dims__inputs input { width: 33%; min-width: 0; }
+#ks-order .ks-do--forget { margin-left: 8px; color: #8a8a8a; }
+#ks-order .ks-do--forget:hover { color: #b32d2e; }

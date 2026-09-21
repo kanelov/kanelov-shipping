@@ -298,7 +298,16 @@ final class EcontCarrier implements CarrierInterface {
 		// Еконт връща грешка на ниво отделна пратка, ако не може да бъде изтрита (напр. вече е приета).
 		foreach ( (array) ( $response['results'] ?? [] ) as $res ) {
 			if ( ! empty( $res['error'] ) ) {
-				return LabelResult::failure( EcontApi::collect_messages( (array) $res['error'] ) ?: [ __( 'Еконт отказа изтриването.', 'kanelov-shipping' ) ], $response );
+				$messages = EcontApi::collect_messages( (array) $res['error'] ) ?: [ __( 'Еконт отказа изтриването.', 'kanelov-shipping' ) ];
+				// „Пратка N не е открита“: вече е изтрита в ee.econt.com. Записът на сайта е излишен и го махаме.
+				if ( self::is_not_found( $messages ) ) {
+					$this->forget_label( $order, __( 'вече не съществува в Еконт (изтрита през ee.econt.com)', 'kanelov-shipping' ) );
+					$r = LabelResult::ok( $response );
+					$r->shipment_number = $number;
+					$r->message         = sprintf( __( 'Товарителница %s вече не съществува в Еконт. Записът е премахнат от сайта.', 'kanelov-shipping' ), $number );
+					return $r;
+				}
+				return LabelResult::failure( $messages, $response );
 			}
 		}
 		OrderMeta::clear_shipment( $order );
@@ -308,6 +317,32 @@ final class EcontCarrier implements CarrierInterface {
 		$r = LabelResult::ok( $response );
 		$r->shipment_number = $number;
 		return $r;
+	}
+
+	/** Премахва записа за товарителницата само от сайта (без заявка към Еконт). За пратки, изтрити през ee.econt.com. */
+	public function forget_label( \WC_Order $order, string $reason = '' ): LabelResult {
+		$shipment = OrderMeta::get_shipment( $order );
+		$number   = (string) ( $shipment['number'] ?? '' );
+		if ( $number === '' ) {
+			return LabelResult::failure( [ __( 'Поръчката няма товарителница.', 'kanelov-shipping' ) ] );
+		}
+		OrderMeta::clear_shipment( $order );
+		$order->add_order_note( sprintf( __( 'Еконт: записът за товарителница %1$s е премахнат от сайта%2$s.', 'kanelov-shipping' ), $number, $reason !== '' ? ', ' . $reason : '' ) );
+		$order->save();
+		Log::info( 'Econt label forgotten', [ 'order' => $order->get_id(), 'number' => $number, 'reason' => $reason ] );
+		$r = LabelResult::ok( [] );
+		$r->shipment_number = $number;
+		return $r;
+	}
+
+	/** Дали съобщенията на Еконт казват, че пратката не съществува. */
+	public static function is_not_found( array $messages ): bool {
+		foreach ( $messages as $m ) {
+			if ( preg_match( '~не е открит|не е намерен|не съществува|not found|does not exist~iu', (string) $m ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public function track( \WC_Order $order ): TrackingResult {
@@ -329,6 +364,9 @@ final class EcontCarrier implements CarrierInterface {
 		$first = (array) ( $statuses[0] ?? [] );
 		if ( ! empty( $first['error'] ) ) {
 			$t->errors = EcontApi::collect_messages( (array) $first['error'] );
+			if ( self::is_not_found( $t->errors ) ) {
+				$t->errors[] = __( 'Пратката е изтрита в Еконт. Използвайте „Премахни записа от сайта“.', 'kanelov-shipping' );
+			}
 			return $t;
 		}
 		$status = (array) ( $first['status'] ?? [] );

@@ -28,6 +28,11 @@ final class HookCallbacksTest extends TestCase {
 		$this->assertSame( [], array_values( array_unique( $missing ) ), 'Закачени или извикани методи без дефиниция' );
 	}
 
+	public function test_econt_not_found_messages_are_recognised(): void {
+		$this->assertTrue( \Kanelov\Shipping\Carrier\Econt\EcontCarrier::is_not_found( [ 'Пратка 1055000000001 не е открита' ] ) );
+		$this->assertFalse( \Kanelov\Shipping\Carrier\Econt\EcontCarrier::is_not_found( [ 'Пратката вече е приета и не може да бъде изтрита' ] ) );
+	}
+
 	/** @return string[] */
 	private function php_files( string $dir ): array {
 		$out = [];

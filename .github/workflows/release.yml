@@ -28,6 +28,16 @@ jobs:
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "tag=v$VER" >> "$GITHUB_OUTPUT"
 
+      - name: Lint PHP
+        run: |
+          set -e
+          for f in $(git ls-files '*.php'); do php -l "$f" > /dev/null; done
+
+      - name: Unit tests
+        run: |
+          composer install --no-interaction --no-progress --quiet
+          composer test
+
       - name: Build zip
         run: bash bin-build.sh dist
 

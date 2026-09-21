@@ -45,6 +45,7 @@ final class OrderMetabox {
 			'nonce'  => wp_create_nonce( self::NONCE ),
 			'i18nAdmin' => [
 				'confirmDelete' => __( 'Да изтрия ли товарителницата от Еконт?', 'kanelov-shipping' ),
+				'confirmForget' => __( 'Да премахна ли записа само от сайта? Ако пратката още съществува в Еконт, тя остава там.', 'kanelov-shipping' ),
 				'working'       => __( 'Изпълнява се…', 'kanelov-shipping' ),
 			],
 		] );
@@ -93,6 +94,7 @@ final class OrderMetabox {
 					<?php endif; ?>
 					<button type="button" class="button ks-do" data-do="track"><?php esc_html_e( 'Проследи', 'kanelov-shipping' ); ?></button>
 					<button type="button" class="button ks-do ks-do--danger" data-do="delete"><?php esc_html_e( 'Изтрий товарителницата', 'kanelov-shipping' ); ?></button>
+					<button type="button" class="button-link ks-do ks-do--forget" data-do="forget" title="<?php esc_attr_e( 'Само премахва номера от поръчката, без заявка към Еконт. За пратки, които вече сте изтрили в ee.econt.com.', 'kanelov-shipping' ); ?>"><?php esc_html_e( 'Премахни записа от сайта', 'kanelov-shipping' ); ?></button>
 				</p>
 				<div class="ks-tracking"></div>
 			</div>
@@ -233,7 +235,12 @@ final class OrderMetabox {
 			case 'delete':
 				$result  = $carrier->delete_label( $order );
 				$errors  = $result->errors;
-				$message = $result->success ? __( 'Товарителницата е изтрита.', 'kanelov-shipping' ) : '';
+				$message = $result->success ? ( $result->message ?: __( 'Товарителницата е изтрита.', 'kanelov-shipping' ) ) : '';
+				break;
+			case 'forget':
+				$result  = $carrier->forget_label( $order, __( 'по избор на оператора', 'kanelov-shipping' ) );
+				$errors  = $result->errors;
+				$message = $result->success ? __( 'Записът е премахнат от сайта. В Еконт нищо не е променено.', 'kanelov-shipping' ) : '';
 				break;
 			case 'track':
 				$t      = $carrier->track( $order );
