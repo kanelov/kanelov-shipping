@@ -5,12 +5,16 @@ use Kanelov\Shipping\Admin\Menu;
 use Kanelov\Shipping\Admin\OrderMetabox;
 use Kanelov\Shipping\Admin\OrdersList;
 use Kanelov\Shipping\Admin\SettingsActions;
+use Kanelov\Shipping\Carrier\BoxNow\BoxNowCarrier;
+use Kanelov\Shipping\Carrier\BoxNow\BoxNowLockers;
+use Kanelov\Shipping\Carrier\BoxNow\BoxNowShippingMethod;
 use Kanelov\Shipping\Carrier\CarrierRegistry;
 use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
 use Kanelov\Shipping\Carrier\Econt\EcontNomenclature;
 use Kanelov\Shipping\Carrier\Econt\EcontShippingMethod;
 use Kanelov\Shipping\Checkout\ClassicCheckout;
 use Kanelov\Shipping\Order\TrackingLink;
+use Kanelov\Shipping\Rest\BoxNowSearchController;
 use Kanelov\Shipping\Rest\EcontSearchController;
 
 defined( 'ABSPATH' ) || exit;
@@ -40,14 +44,20 @@ final class Plugin {
 		Installer::maybe_upgrade();
 
 		$this->carriers->register( new EcontCarrier() );
+		$boxnow = new BoxNowCarrier();
+		$this->carriers->register( $boxnow );
 
 		add_filter( 'woocommerce_shipping_methods', static function ( array $methods ): array {
-			$methods[ EcontShippingMethod::ID ] = EcontShippingMethod::class;
+			$methods[ EcontShippingMethod::ID ]  = EcontShippingMethod::class;
+			$methods[ BoxNowShippingMethod::ID ] = BoxNowShippingMethod::class;
 			return $methods;
 		} );
 
 		( new EcontNomenclature() )->register_jobs();
+		( new BoxNowLockers() )->register_jobs();
 		( new EcontSearchController() )->register();
+		( new BoxNowSearchController() )->register();
+		$boxnow->register();
 		( new ClassicCheckout() )->register();
 		( new TrackingLink() )->register();
 

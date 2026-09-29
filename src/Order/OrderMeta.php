@@ -14,7 +14,7 @@ final class OrderMeta {
 	const DELIVERY        = '_ks_delivery';        // масив от DeliveryData
 	const SHIPMENT        = '_ks_shipment';        // масив: carrier, number, pdf_url, created_at, total_price, cd_amount, status, status_time
 	const SHIPMENT_NUMBER = '_ks_shipment_number'; // дублиран за търсене/колона
-	const USER_DELIVERY   = '_ks_delivery';        // user meta със същата структура
+	const USER_DELIVERY   = '_ks_delivery';        // user meta със същата структура (Еконт); другите куриери: _ks_delivery_<carrier>
 
 	public static function get_delivery( \WC_Order $order ): DeliveryData {
 		$data = $order->get_meta( self::DELIVERY, true );
@@ -47,12 +47,18 @@ final class OrderMeta {
 		$order->delete_meta_data( self::SHIPMENT_NUMBER );
 	}
 
-	public static function get_user_delivery( int $user_id ): DeliveryData {
-		$data = get_user_meta( $user_id, self::USER_DELIVERY, true );
-		return DeliveryData::from_array( is_array( $data ) ? $data : [] );
+	/** Ключът на user meta за куриера: Еконт пази стария ключ, другите имат наставка. */
+	private static function user_key( string $carrier ): string {
+		return $carrier === '' || $carrier === 'econt' ? self::USER_DELIVERY : self::USER_DELIVERY . '_' . sanitize_key( $carrier );
+	}
+
+	public static function get_user_delivery( int $user_id, string $carrier = 'econt' ): DeliveryData {
+		$data = get_user_meta( $user_id, self::user_key( $carrier ), true );
+		$d    = DeliveryData::from_array( is_array( $data ) ? $data : [] );
+		return $d->carrier === '' || $d->carrier === $carrier ? $d : new DeliveryData();
 	}
 
 	public static function set_user_delivery( int $user_id, DeliveryData $delivery ): void {
-		update_user_meta( $user_id, self::USER_DELIVERY, $delivery->to_array() );
+		update_user_meta( $user_id, self::user_key( $delivery->carrier ), $delivery->to_array() );
 	}
 }

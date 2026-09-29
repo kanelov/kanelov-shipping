@@ -13,6 +13,9 @@ interface CarrierInterface {
 
 	public function label(): string;
 
+	/** Id на метода за доставка в WooCommerce (напр. ks_econt), чиято ставка избира този куриер в чекаута. */
+	public function method_id(): string;
+
 	/** @return string[] Подмножество на DeliveryData::TYPE_* */
 	public function supported_types(): array;
 
@@ -33,4 +36,10 @@ interface CarrierInterface {
 	public function delete_label( \WC_Order $order ): LabelResult;
 
 	public function track( \WC_Order $order ): TrackingResult;
+
+	/** Публичен адрес за проследяване на пратка ('' = куриерът няма такъв). */
+	public function tracking_link( string $number ): string;
+
+	/** Адрес на PDF етикета на товарителницата на поръчката за печат от админа ('' = няма). */
+	public function label_url( \WC_Order $order ): string;
 }

@@ -22,8 +22,20 @@ final class EcontCarrier implements CarrierInterface {
 		return 'Еконт';
 	}
 
+	public function method_id(): string {
+		return EcontShippingMethod::ID;
+	}
+
 	public function supported_types(): array {
 		return [ DeliveryData::TYPE_OFFICE, DeliveryData::TYPE_LOCKER, DeliveryData::TYPE_DOOR ];
+	}
+
+	public function tracking_link( string $number ): string {
+		return self::tracking_url( $number );
+	}
+
+	public function label_url( \WC_Order $order ): string {
+		return (string) ( OrderMeta::get_shipment( $order )['pdf_url'] ?? '' );
 	}
 
 	private function settings(): EcontSettings {

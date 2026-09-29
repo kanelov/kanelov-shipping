@@ -56,7 +56,7 @@
 
 	/**
 	 * Свързва полетата в root (елементи с класове ks-*) с REST търсенето.
-	 * opts: { rest, i18n, getType(): 'office'|'locker'|'door', onChange() }
+	 * opts: { rest, i18n, getType(): 'office'|'locker'|'door', onChange(), searchAll: търсене на офиси без избран град }
 	 */
 	function mount(root, opts) {
 		var i18n = opts.i18n || {};
@@ -85,8 +85,14 @@
 			changed();
 		}
 		function officeSource(q) {
-			if (!els.cityId.value) return [{ label: i18n.chooseCity, muted: true }];
 			var type = opts.getType() === 'locker' ? 'locker' : 'office';
+			if (!els.cityId.value) {
+				if (!opts.searchAll || !(q || '').trim()) return [{ label: i18n.chooseCity, muted: true }];
+				return api('offices', { q: q, type: type }).then(function (list) {
+					var out = list.map(function (o) { return { code: o.code, label: o.label, sub: (o.city ? o.city.name + ' · ' : '') + (o.hours || ''), hours: o.hours, city: o.city }; });
+					return out.length ? out : [{ label: i18n.noResults, muted: true }];
+				});
+			}
 			return api('offices', { city_id: els.cityId.value, type: type }).then(function (list) {
 				q = (q || '').toLowerCase();
 				if (q && q === (els.officeName.value || '').toLowerCase()) q = '';
@@ -190,7 +196,8 @@
 		return {
 			applyType: function (type) {
 				var toOffice = type !== 'door';
-				els.secOffice.hidden = !toOffice; els.secDoor.hidden = toOffice;
+				if (els.secOffice) els.secOffice.hidden = !toOffice;
+				if (els.secDoor) els.secDoor.hidden = toOffice;
 				if (els.nearest) els.nearest.hidden = !toOffice;
 				if (mapBtn) mapBtn.hidden = !toOffice;
 				els.office.placeholder = type === 'locker' ? i18n.searchLocker : i18n.searchOffice;

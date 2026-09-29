@@ -1,6 +1,9 @@
 <?php
 namespace Kanelov\Shipping\Checkout;
 
+use Kanelov\Shipping\Carrier\BoxNow\BoxNowCarrier;
+use Kanelov\Shipping\Carrier\BoxNow\BoxNowSettings;
+use Kanelov\Shipping\Carrier\CarrierInterface;
 use Kanelov\Shipping\Carrier\DeliveryData;
 use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
 use Kanelov\Shipping\Carrier\Econt\EcontSettings;
@@ -12,14 +15,15 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Класически чекаут (шорткод [woocommerce_checkout]).
- * Еконт е една ставка в прегледа на поръчката. Видът доставка (офис, Еконтомат, адрес) клиентът избира с икони
- * в блока „Доставка“ в лявата колона (първо куриер, после вид), на мястото на скритите адресни полета; изборът се пази в сесията, влиза в пакета за доставка и определя
- * цената на ставката. Стандартните адресни полета се скриват и стават незадължителни; след поръчка адресът за
- * доставка в WooCommerce се попълва с четим текст, за да се вижда навсякъде.
+ * Всеки куриер е една ставка в прегледа на поръчката. В блока „Доставка“ в лявата колона клиентът избира куриер (карти),
+ * после за Еконт вид доставка (офис, Еконтомат, адрес) с икони, а за Box Now направо автомат; после населено място
+ * и офис/автомат/адрес. Видът за Еконт се пази в сесията, влиза в пакета за доставка и определя цената на ставката.
+ * Стандартните адресни полета се скриват и стават незадължителни; след поръчка адресът за доставка в WooCommerce
+ * се попълва с четим текст, за да се вижда навсякъде.
  */
 final class ClassicCheckout {
 
-	/** Полета, които се скриват при доставка с Еконт. */
+	/** Полета, които се скриват при доставка с наш куриер. */
 	const HIDDEN_BILLING = [ 'billing_company', 'billing_country', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_postcode' ];
 
 	const SESSION_TYPE = 'ks_type';
@@ -40,21 +44,33 @@ final class ClassicCheckout {
 
 	// Избор в сесията.
 
-	/** Дали в сесията е избрана ставката на Еконт. */
-	public static function is_econt_chosen(): bool {
+	/** Куриерът, чиято ставка е избрана в сесията, или null. */
+	public static function chosen_carrier(): ?CarrierInterface {
 		if ( ! function_exists( 'WC' ) || ! WC()->session || ! WC()->cart || ! WC()->cart->needs_shipping() ) {
-			return false;
+			return null;
 		}
 		foreach ( (array) WC()->session->get( 'chosen_shipping_methods', [] ) as $rate_id ) {
-			if ( EcontShippingMethod::is_econt_rate( (string) $rate_id ) ) {
-				return true;
+			$method = explode( ':', (string) $rate_id )[0];
+			foreach ( Plugin::instance()->carriers()->all() as $carrier ) {
+				if ( $carrier->method_id() === $method ) {
+					return $carrier;
+				}
 			}
 		}
-		return false;
+		return null;
+	}
+
+	/** Дали в сесията е избрана ставката на Еконт. */
+	public static function is_econt_chosen(): bool {
+		return self::chosen_carrier()?->id() === EcontCarrier::ID;
+	}
+
+	public static function is_boxnow_chosen(): bool {
+		return self::chosen_carrier()?->id() === BoxNowCarrier::ID;
 	}
 
 	/**
-	 * Видът доставка, който клиентът иска: от сесията, иначе запомненият от профила, иначе този по подразбиране.
+	 * Видът доставка с Еконт, който клиентът иска: от сесията, иначе запомненият от профила, иначе този по подразбиране.
 	 * '' = още не е избран.
 	 */
 	public static function requested_type(): string {
@@ -66,16 +82,20 @@ final class ClassicCheckout {
 			return $type;
 		}
 		if ( $type === null ) {
-			$saved = self::saved_delivery()->type;
+			$saved = self::saved_delivery( EcontCarrier::ID )->type;
 			return $saved !== '' ? $saved : ( new EcontSettings() )->default_type();
 		}
 		return '';
 	}
 
-	/** Избраният вид доставка с Еконт или null, ако е избран друг куриер (или няма избран вид). */
+	/** Избраният вид доставка на избрания куриер или null, ако не е избран наш куриер (или няма избран вид). */
 	public static function chosen_type(): ?string {
-		if ( ! self::is_econt_chosen() ) {
+		$carrier = self::chosen_carrier();
+		if ( ! $carrier ) {
 			return null;
+		}
+		if ( $carrier->id() === BoxNowCarrier::ID ) {
+			return DeliveryData::TYPE_LOCKER;
 		}
 		return self::requested_type() ?: null;
 	}
@@ -109,33 +129,38 @@ final class ClassicCheckout {
 		return $fragments;
 	}
 
-	/** JSON с наличните видове доставка от ставката на Еконт (label, cost, price като текст). */
+	/** JSON с наличните видове доставка по куриер от ставките (label, cost, price като текст). */
 	private static function options_json(): string {
 		$options = [];
 		if ( function_exists( 'WC' ) && WC()->shipping() ) {
 			foreach ( WC()->shipping()->get_packages() as $package ) {
 				foreach ( (array) ( $package['rates'] ?? [] ) as $rate ) {
-					if ( ! $rate instanceof \WC_Shipping_Rate || ! EcontShippingMethod::is_econt_rate( $rate->get_id() ) ) {
+					if ( ! $rate instanceof \WC_Shipping_Rate ) {
 						continue;
 					}
-					foreach ( (array) ( $rate->get_meta_data()['ks_options'] ?? [] ) as $type => $o ) {
-						$options[ $type ] = [
+					$meta    = $rate->get_meta_data();
+					$carrier = (string) ( $meta['ks_carrier'] ?? '' );
+					if ( $carrier === '' ) {
+						continue;
+					}
+					foreach ( (array) ( $meta['ks_options'] ?? [] ) as $type => $o ) {
+						$options[ $carrier ][ $type ] = [
 							'label' => (string) $o['label'],
 							'cost'  => (float) $o['cost'],
 							'price' => (float) $o['cost'] > 0 ? html_entity_decode( wp_strip_all_tags( wc_price( (float) $o['cost'] ) ), ENT_QUOTES, 'UTF-8' ) : __( 'безплатно', 'kanelov-shipping' ), // чист текст: JS го слага с textContent
 						];
 					}
-					break 2;
 				}
+				break;
 			}
 		}
-		return '<script type="application/json" id="ks-type-options">' . wp_json_encode( $options ) . '</script>';
+		return '<script type="application/json" id="ks-type-options">' . wp_json_encode( $options ?: new \stdClass() ) . '</script>';
 	}
 
 	// Полета.
 
 	public function relax_address_fields( array $fields ): array {
-		if ( ! self::is_econt_chosen() ) {
+		if ( ! self::chosen_carrier() ) {
 			return $fields;
 		}
 		foreach ( self::HIDDEN_BILLING as $key ) {
@@ -150,7 +175,7 @@ final class ClassicCheckout {
 	}
 
 	public function needs_shipping_address( bool $needs ): bool {
-		return self::is_econt_chosen() ? false : $needs;
+		return self::chosen_carrier() ? false : $needs;
 	}
 
 	public function assets(): void {
@@ -159,64 +184,75 @@ final class ClassicCheckout {
 		}
 		DeliveryFormView::enqueue_scripts();
 		wp_enqueue_script( 'ks-checkout', KS_URL . 'assets/js/checkout.js', [ 'jquery', 'ks-delivery-form' ], KS_VERSION, true );
+		$carriers = [];
+		foreach ( Plugin::instance()->carriers()->all() as $carrier ) {
+			$carriers[ $carrier->id() ] = [ 'method' => $carrier->method_id(), 'types' => $carrier->supported_types() ];
+		}
 		wp_localize_script( 'ks-checkout', 'ksCheckout', DeliveryFormView::js_config() + [
-			'saved'       => self::saved_delivery()->to_array(),
+			'carriers'    => $carriers,
+			'boxnow'      => BoxNowFormView::js_config(),
+			'saved'       => self::saved_delivery( EcontCarrier::ID )->to_array(),
+			'savedBoxNow' => self::saved_delivery( BoxNowCarrier::ID )->to_array(),
 			'defaultType' => ( new EcontSettings() )->default_type(),
 		] );
 	}
 
-	/** Запомненият избор: от текущата сесия или от потребителския профил. */
-	private static function saved_delivery(): DeliveryData {
+	/** Запомненият избор за куриера: от текущата сесия (ако е за същия куриер) или от потребителския профил. */
+	private static function saved_delivery( string $carrier ): DeliveryData {
 		$session = WC()->session ? WC()->session->get( 'ks_delivery' ) : null;
-		if ( is_array( $session ) ) {
+		if ( is_array( $session ) && ( $session['carrier'] ?? '' ) === $carrier ) {
 			return DeliveryData::from_array( $session );
 		}
 		if ( is_user_logged_in() ) {
-			return OrderMeta::get_user_delivery( get_current_user_id() );
+			return OrderMeta::get_user_delivery( get_current_user_id(), $carrier );
 		}
 		return new DeliveryData();
 	}
 
-	/** Куриери, които още не са готови: показват се като сива карта „скоро“. */
-	const COMING_SOON = [ 'boxnow' => 'Box Now' ];
-
 	public function render_fields(): void {
-		$saved       = self::saved_delivery();
-		$saved->type = self::requested_type();
+		$econt       = self::saved_delivery( EcontCarrier::ID );
+		$econt->type = self::requested_type();
+		$boxnow      = self::saved_delivery( BoxNowCarrier::ID );
 		$carriers    = Plugin::instance()->carriers()->all();
 		?>
-		<div id="ks-delivery" class="ks-delivery" data-type="<?php echo esc_attr( $saved->type ); ?>" hidden>
+		<div id="ks-delivery" class="ks-delivery" data-type="<?php echo esc_attr( $econt->type ); ?>" hidden>
 			<h3><?php esc_html_e( 'Доставка', 'kanelov-shipping' ); ?></h3>
 
 			<fieldset class="ks-step ks-step--carrier ks-carrier-picker">
 				<legend class="ks-step__label"><?php esc_html_e( 'Куриер', 'kanelov-shipping' ); ?></legend>
 				<div class="ks-carrier-picker__options">
 					<?php foreach ( $carriers as $carrier ) : ?>
-						<button type="button" class="ks-carrier-option" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" data-method="<?php echo esc_attr( EcontShippingMethod::ID ); ?>">
+						<button type="button" class="ks-carrier-option" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" data-method="<?php echo esc_attr( $carrier->method_id() ); ?>">
 							<span class="ks-carrier-option__name"><?php echo esc_html( $carrier->label() ); ?></span>
 							<span class="ks-carrier-option__sub"></span>
 						</button>
-					<?php endforeach; ?>
-					<?php foreach ( self::COMING_SOON as $id => $name ) : ?>
-						<span class="ks-carrier-option ks-carrier-option--soon" data-carrier="<?php echo esc_attr( $id ); ?>" aria-disabled="true">
-							<span class="ks-carrier-option__name"><?php echo esc_html( $name ); ?></span>
-							<span class="ks-carrier-option__sub"><?php esc_html_e( 'скоро', 'kanelov-shipping' ); ?></span>
-						</span>
 					<?php endforeach; ?>
 				</div>
 			</fieldset>
 
 			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>" hidden>
-				<?php DeliveryFormView::render( $saved, false ); ?>
+				<?php DeliveryFormView::render( $econt, false ); ?>
+			</div>
+			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( BoxNowCarrier::ID ); ?>" data-prefix="<?php echo esc_attr( BoxNowFormView::PREFIX ); ?>" hidden>
+				<?php BoxNowFormView::render( $boxnow, false ); ?>
 			</div>
 			<?php echo self::options_json(); // phpcs:ignore WordPress.Security.EscapeOutput -- JSON в script таг. ?>
 		</div>
 		<?php
 	}
 
-	/** Чете DeliveryData от POST на чекаута. */
+	/** Чете DeliveryData на Еконт от POST на чекаута. */
 	public static function delivery_from_post( array $post, string $type ): DeliveryData {
 		return DeliveryFormView::from_request( $post, EcontCarrier::ID, $type );
+	}
+
+	/** Изборът на клиента за избрания куриер от POST на чекаута. */
+	private static function delivery_for( CarrierInterface $carrier, array $post ): ?DeliveryData {
+		if ( $carrier->id() === BoxNowCarrier::ID ) {
+			return BoxNowFormView::from_request( $post );
+		}
+		$type = self::requested_type();
+		return $type === '' ? null : self::delivery_from_post( $post, $type );
 	}
 
 	public function validate(): void {
@@ -224,17 +260,16 @@ final class ClassicCheckout {
 		if ( isset( $_POST[ DeliveryFormView::PREFIX . 'type' ] ) ) {
 			self::set_type( sanitize_text_field( wp_unslash( (string) $_POST[ DeliveryFormView::PREFIX . 'type' ] ) ) );
 		}
-		if ( ! self::is_econt_chosen() ) {
+		$carrier = self::chosen_carrier();
+		if ( ! $carrier ) {
 			return;
 		}
-		$type = self::requested_type();
-		if ( $type === '' ) {
+		$delivery = self::delivery_for( $carrier, $_POST );
+		// phpcs:enable
+		if ( ! $delivery ) {
 			wc_add_notice( __( 'Изберете как да получите пратката с Еконт: в офис, от Еконтомат или на адрес.', 'kanelov-shipping' ), 'error' );
 			return;
 		}
-		$delivery = self::delivery_from_post( $_POST, $type );
-		// phpcs:enable
-		$carrier = Plugin::instance()->carriers()->get( EcontCarrier::ID );
 		foreach ( $carrier->validate_delivery( $delivery ) as $error ) {
 			wc_add_notice( $error, 'error' );
 		}
@@ -244,12 +279,14 @@ final class ClassicCheckout {
 	}
 
 	public function save_to_order( \WC_Order $order, array $data ): void {
-		$type = self::chosen_type();
-		if ( ! $type ) {
+		$carrier = self::chosen_carrier();
+		if ( ! $carrier ) {
 			return;
 		}
-		$delivery = self::delivery_from_post( $_POST, $type ); // phpcs:ignore WordPress.Security.NonceVerification
-		$carrier  = Plugin::instance()->carriers()->get( EcontCarrier::ID );
+		$delivery = self::delivery_for( $carrier, $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! $delivery ) {
+			return;
+		}
 
 		OrderMeta::set_delivery( $order, $delivery );
 
@@ -281,8 +318,19 @@ final class ClassicCheckout {
 	}
 
 	public function filter_gateways( array $gateways ): array {
-		if ( self::chosen_type() === DeliveryData::TYPE_LOCKER && ! ( new EcontSettings() )->locker_allow_cod() ) {
+		$carrier = self::chosen_carrier();
+		if ( ! $carrier || ! isset( $gateways['cod'] ) ) {
+			return $gateways;
+		}
+		if ( $carrier->id() === EcontCarrier::ID && self::chosen_type() === DeliveryData::TYPE_LOCKER && ! ( new EcontSettings() )->locker_allow_cod() ) {
 			unset( $gateways['cod'] );
+		}
+		if ( $carrier->id() === BoxNowCarrier::ID ) {
+			$settings = new BoxNowSettings();
+			$total    = WC()->cart ? (float) WC()->cart->get_total( 'edit' ) : 0.0;
+			if ( ! $settings->allow_cod() || $total > $settings->cod_max() ) {
+				unset( $gateways['cod'] );
+			}
 		}
 		return $gateways;
 	}

@@ -15,6 +15,13 @@
 		var root = box.querySelector('#ks-delivery');
 		if (!root) return;
 		var typeSel = root.querySelector('.ks-type');
+		if (root.dataset.carrier === 'boxnow') {
+			var c = cfg.boxnow || {};
+			var bn = KSDeliveryForm.mount(root, { rest: c.rest, sync: c.sync, i18n: c.i18n || cfg.i18n, map: c.map, searchAll: true, getType: function () { return 'locker'; } });
+			bn.applyType('locker');
+			return;
+		}
+		if (!typeSel) return;
 		var form = KSDeliveryForm.mount(root, { rest: cfg.rest, sync: cfg.sync, i18n: cfg.i18n, map: cfg.map, getType: function () { return typeSel.value; } });
 		form.applyType(typeSel.value);
 		typeSel.addEventListener('change', function () { form.applyType(typeSel.value); });
@@ -52,7 +59,7 @@
 		mount();
 		$(box).on('click', '.ks-do', function () {
 			var action = this.dataset.do;
-			if (action === 'delete' && !window.confirm(cfg.i18nAdmin.confirmDelete)) return;
+			if (action === 'delete' && !window.confirm(box.querySelector('#ks-delivery[data-carrier="boxnow"]') ? cfg.i18nAdmin.confirmCancel : cfg.i18nAdmin.confirmDelete)) return;
 			if (action === 'forget' && !window.confirm(cfg.i18nAdmin.confirmForget)) return;
 			run(action);
 		});

@@ -1,7 +1,7 @@
 <?php
 namespace Kanelov\Shipping\Order;
 
-use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
+use Kanelov\Shipping\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,17 +16,31 @@ final class TrackingLink {
 		add_action( 'woocommerce_order_details_after_order_table', [ $this, 'account' ] );
 	}
 
-	private function block( \WC_Order $order ): string {
+	/** [куриер, номер, адрес за проследяване] или null, ако поръчката няма товарителница. */
+	private function shipment( \WC_Order $order ): ?array {
 		$shipment = OrderMeta::get_shipment( $order );
 		if ( empty( $shipment['number'] ) ) {
+			return null;
+		}
+		$carrier = Plugin::instance()->carriers()->get( (string) ( $shipment['carrier'] ?? OrderMeta::get_delivery( $order )->carrier ) );
+		return [ $carrier ? $carrier->label() : '', (string) $shipment['number'], $carrier ? $carrier->tracking_link( (string) $shipment['number'] ) : '' ];
+	}
+
+	private function block( \WC_Order $order ): string {
+		$s = $this->shipment( $order );
+		if ( ! $s ) {
 			return '';
 		}
-		$url = EcontCarrier::tracking_url( (string) $shipment['number'] );
+		[ $label, $number, $url ] = $s;
+		$title = sprintf( __( 'Товарителница %s:', 'kanelov-shipping' ), $label );
+		if ( $url === '' ) {
+			return sprintf( '<p class="ks-tracking-link"><strong>%s</strong> %s</p>', esc_html( $title ), esc_html( $number ) );
+		}
 		return sprintf(
 			'<p class="ks-tracking-link"><strong>%s</strong> <a href="%s" target="_blank" rel="noopener">%s</a><br><a href="%s" style="display:inline-block;margin-top:8px;padding:10px 18px;background:#1c4fa1;color:#fff;text-decoration:none;border-radius:4px">%s</a></p>',
-			esc_html__( 'Товарителница Еконт:', 'kanelov-shipping' ),
+			esc_html( $title ),
 			esc_url( $url ),
-			esc_html( (string) $shipment['number'] ),
+			esc_html( $number ),
 			esc_url( $url ),
 			esc_html__( 'Проследи пратката', 'kanelov-shipping' )
 		);
@@ -36,12 +50,12 @@ final class TrackingLink {
 		if ( $sent_to_admin || ! $order instanceof \WC_Order ) {
 			return;
 		}
-		$shipment = OrderMeta::get_shipment( $order );
-		if ( empty( $shipment['number'] ) ) {
+		$s = $this->shipment( $order );
+		if ( ! $s ) {
 			return;
 		}
 		if ( $plain_text ) {
-			echo "\n" . esc_html__( 'Проследи пратката:', 'kanelov-shipping' ) . ' ' . esc_url( EcontCarrier::tracking_url( (string) $shipment['number'] ) ) . "\n";
+			echo "\n" . esc_html( sprintf( __( 'Товарителница %1$s: %2$s', 'kanelov-shipping' ), $s[0], $s[1] ) ) . ( $s[2] !== '' ? ' ' . esc_url( $s[2] ) : '' ) . "\n";
 			return;
 		}
 		echo wp_kses_post( $this->block( $order ) );

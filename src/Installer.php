@@ -1,6 +1,7 @@
 <?php
 namespace Kanelov\Shipping;
 
+use Kanelov\Shipping\Carrier\BoxNow\BoxNowLockers;
 use Kanelov\Shipping\Carrier\Econt\EcontNomenclature;
 use Kanelov\Shipping\Carrier\Econt\EcontSettings;
 
@@ -9,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class Installer {
 
 	const DB_VERSION_OPTION = 'ks_db_version';
-	const DB_VERSION        = '1';
+	const DB_VERSION        = '2';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -25,6 +26,7 @@ final class Installer {
 			as_unschedule_all_actions( EcontNomenclature::JOB_SYNC, [], EcontNomenclature::AS_GROUP );
 			as_unschedule_all_actions( EcontNomenclature::JOB_SYNC_CITIES, [], EcontNomenclature::AS_GROUP );
 			as_unschedule_all_actions( EcontNomenclature::JOB_SYNC_OFFICES, [], EcontNomenclature::AS_GROUP );
+			as_unschedule_all_actions( BoxNowLockers::JOB_SYNC, [], BoxNowLockers::AS_GROUP );
 		}
 	}
 
@@ -47,6 +49,7 @@ final class Installer {
 			add_action( 'init', static function () {
 				if ( function_exists( 'as_enqueue_async_action' ) ) {
 					( new EcontNomenclature() )->sync_now();
+					( new BoxNowLockers() )->sync_now();
 				}
 			}, 20 );
 		}
@@ -71,6 +74,7 @@ final class Installer {
 		$charset = $wpdb->get_charset_collate();
 		$cities  = EcontNomenclature::table_cities();
 		$offices = EcontNomenclature::table_offices();
+		$lockers = BoxNowLockers::table();
 
 		dbDelta( "CREATE TABLE {$cities} (
 			id BIGINT UNSIGNED NOT NULL,
@@ -105,6 +109,24 @@ final class Installer {
 			PRIMARY KEY  (id),
 			UNIQUE KEY code (code),
 			KEY city_type (city_id, is_aps)
+		) {$charset};" );
+
+		dbDelta( "CREATE TABLE {$lockers} (
+			id VARCHAR(32) NOT NULL,
+			name VARCHAR(191) NOT NULL DEFAULT '',
+			address VARCHAR(255) NOT NULL DEFAULT '',
+			address2 VARCHAR(255) NOT NULL DEFAULT '',
+			post_code VARCHAR(16) NOT NULL DEFAULT '',
+			city VARCHAR(191) NOT NULL DEFAULT '',
+			city_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			latitude DECIMAL(10,7) NULL,
+			longitude DECIMAL(10,7) NULL,
+			note TEXT NULL,
+			raw TEXT NULL,
+			updated_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY city_id (city_id),
+			KEY city (city(32))
 		) {$charset};" );
 	}
 }

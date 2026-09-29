@@ -51,7 +51,7 @@ final class DeliveryData {
 	}
 
 	public function is_empty(): bool {
-		return $this->type === '' || $this->city_id === 0;
+		return $this->type === '' || ( $this->city_id === 0 && $this->office_code === '' );
 	}
 
 	public function is_to_office(): bool {

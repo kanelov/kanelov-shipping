@@ -1,7 +1,7 @@
 # Kanelov Shipping
 
-WooCommerce плъгин за доставка с Еконт (офис, Еконтомат, адрес) и генериране на товарителници през JSON API на Еконт.
-Ядрото е с интерфейс за куриери, за да се добавят BoxNow и други по същия модел.
+WooCommerce плъгин за доставка с Еконт (офис, Еконтомат, адрес) и Box Now (автомат) с товарителници от поръчката.
+Еконт работи през JSON API на ee.econt.com, Box Now през Partner API (OAuth2). Ядрото е с интерфейс за куриери.
 
 ## Изисквания
 
@@ -22,6 +22,15 @@ WooCommerce плъгин за доставка с Еконт (офис, Екон
 
 Всеки сайт има собствени настройки и таблици с офиси; няколко сайта с един и същ Еконт профил не си пречат.
 
+## Box Now
+
+1. WooCommerce > Настройки > Доставка > **Box Now** (менюто „Доставки“ > Box Now): Client ID, Client Secret, Partner ID,
+   среда „реална“, Запази, после „Тест на връзката“. Тестът зарежда складовете и разрешенията от Box Now и сваля автоматите.
+2. „Изпращане от“: изберете склада (Warehouse ID от писмото на Box Now), попълнете подател, Запази.
+3. WooCommerce > Настройки > Доставка > Зони: добавете метод „Box Now“ в зоната за България и задайте цената.
+4. „Тестов режим“ показва Box Now само на администратори; изключете го, когато сте готови.
+5. В поръчката кутията „Box Now“ създава пратката, отваря PDF етикета, проследява и отказва. Box Now взима пратките от склада ви.
+
 ## Структура
 
 ```
@@ -37,6 +46,13 @@ src/Carrier/Econt/EcontNomenclature  градове/офиси в таблици
 src/Carrier/Econt/EcontLabelBuilder  чисто построяване на заявката createLabel (unit тестове)
 src/Carrier/Econt/EcontCarrier       калкулация, създаване, изтриване, проследяване
 src/Carrier/Econt/EcontShippingMethod  WC метод за доставка: една ставка с цена по избрания вид + глобални настройки
+src/Carrier/BoxNow/BoxNowApi         HTTP клиент за Partner API (OAuth2 токен в transient, X-PartnerID)
+src/Carrier/BoxNow/BoxNowLockers     автомати в таблица от публичния JSON на Box Now, търсене по град/най-близки
+src/Carrier/BoxNow/BoxNowLabelBuilder чисто построяване на заявката delivery-requests (unit тестове)
+src/Carrier/BoxNow/BoxNowCarrier     заявка за доставка, PDF етикет (в uploads), отказ, статус
+src/Carrier/BoxNow/BoxNowShippingMethod WC метод „Box Now“: една ставка до автомат + глобални настройки
+src/Checkout/BoxNowFormView          полета за избор на автомат (префикс ksbn_), общ JS с Еконт
+src/Rest/BoxNowSearchController      публични REST маршрути за търсене на автомати (kanelov-shipping/v1/boxnow/*)
 src/Rest/EcontSearchController  публични REST маршрути за търсене (kanelov-shipping/v1/econt/*)
 src/Admin/SettingsActions       бутони: тест, обнови профила, обнови офисите и Еконтоматите
 src/Admin/OrdersList            колона „Еконт“ с бутон за товарителница, масово създаване по дата

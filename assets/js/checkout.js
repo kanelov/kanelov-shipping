@@ -1,13 +1,13 @@
 /* global ksCheckout, jQuery, KSDeliveryForm */
-/* Kanelov Shipping – класически чекаут. Блок „Доставка“: куриер (карти) → вид доставка (икони) → населено място → офис/Еконтомат или адрес.
- * Картата на куриера избира ставката му в WooCommerce. Видът се праща като ks_type при всяко обновяване на прегледа;
- * сървърът го пази в сесията и сменя цената на ставката. */
+/* Kanelov Shipping – класически чекаут. Блок „Доставка“: куриер (карти) → за Еконт вид доставка (икони) → населено място
+ * → офис/Еконтомат/автомат или адрес. Картата на куриера избира ставката му в WooCommerce. Видът на Еконт се праща като
+ * ks_type при всяко обновяване на прегледа; сървърът го пази в сесията и сменя цената на ставката. */
 (function ($) {
 	'use strict';
 	var cfg = window.ksCheckout || {};
-	var STORAGE_KEY = 'ks_delivery';
 	var TYPES = ['office', 'locker', 'door'];
-	var root, form, cityId, carrierForm, options = {};
+	var carriers = cfg.carriers || { econt: { method: cfg.methodId, types: TYPES } };
+	var root, options = {}, forms = {};
 
 	function rateInputs() { return Array.prototype.slice.call(document.querySelectorAll('input[name^="shipping_method"]')); }
 	function rateFor(methodId) {
@@ -16,10 +16,15 @@
 	function chosenRate() {
 		return document.querySelector('input[name^="shipping_method"]:checked') || document.querySelector('input[name^="shipping_method"][type="hidden"]');
 	}
-	function econtAvailable() { return !!rateFor(cfg.methodId); }
-	function econtChosen() {
+	function carrierForMethod(methodId) {
+		return Object.keys(carriers).filter(function (id) { return carriers[id].method === methodId; })[0] || '';
+	}
+	function anyAvailable() {
+		return Object.keys(carriers).some(function (id) { return !!rateFor(carriers[id].method); });
+	}
+	function chosenCarrier() {
 		var input = chosenRate();
-		return !!input && String(input.value).split(':')[0] === cfg.methodId;
+		return input ? carrierForMethod(String(input.value).split(':')[0]) : '';
 	}
 	/* Всички ставки са на наши куриери (ks_*) → изборът е само в блока, в прегледа остава избраният ред. */
 	function onlyOurRates() {
@@ -27,55 +32,114 @@
 		return inputs.length > 0 && inputs.every(function (i) { return String(i.value).indexOf('ks_') === 0; });
 	}
 
-	function getType() {
-		var r = root.querySelector('input.ks-type:checked');
-		return r ? r.value : '';
+	/* Форма на куриер: root елемент, префикс на полетата, вид доставка. */
+	function Form(el, carrier) {
+		this.el = el; this.carrier = carrier;
+		this.prefix = el.dataset.prefix || 'ks_';
+		this.storageKey = carrier === 'econt' ? 'ks_delivery' : 'ks_delivery_' + carrier;
+		this.cityId = el.querySelector('.ks-city-id');
+		this.fixedType = carrier === 'econt' ? '' : 'locker';
 	}
-	function setType(type) {
-		var r = root.querySelector('input.ks-type[value="' + type + '"]');
+	Form.prototype.getType = function () {
+		if (this.fixedType) return this.fixedType;
+		var r = this.el.querySelector('input.ks-type:checked');
+		return r ? r.value : '';
+	};
+	Form.prototype.setType = function (type) {
+		var r = this.el.querySelector('input.ks-type[value="' + type + '"]');
 		if (r && !r.disabled) { r.checked = true; return true; }
 		return false;
-	}
-	function state() {
-		var s = {};
-		root.querySelectorAll('[name^="ks_"]').forEach(function (i) {
+	};
+	Form.prototype.state = function () {
+		var s = {}, p = this.prefix;
+		this.el.querySelectorAll('[name^="' + p + '"]').forEach(function (i) {
 			if (i.type === 'radio' && !i.checked) return;
-			s[i.name.replace(/^ks_/, '')] = i.value;
+			s[i.name.slice(p.length)] = i.value;
 		});
 		return s;
-	}
-	function remember() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state())); } catch (e) { /* private mode */ } }
-	function recall() {
-		try { var s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); if (s && (s.city_id || s.type)) return s; } catch (e) { /* ignore */ }
-		return cfg.saved && (cfg.saved.city_id || cfg.saved.type) ? cfg.saved : null;
-	}
+	};
+	Form.prototype.remember = function () { try { localStorage.setItem(this.storageKey, JSON.stringify(this.state())); } catch (e) { /* private mode */ } };
+	Form.prototype.recall = function () {
+		try { var s = JSON.parse(localStorage.getItem(this.storageKey) || 'null'); if (s && (s.city_id || s.type || s.office_code)) return s; } catch (e) { /* ignore */ }
+		var saved = this.carrier === 'econt' ? cfg.saved : cfg.savedBoxNow;
+		return saved && (saved.city_id || saved.type || saved.office_code) ? saved : null;
+	};
+	Form.prototype.restore = function () {
+		var saved = this.recall(), el = this.el, p = this.prefix;
+		if (!saved) return;
+		Object.keys(saved).forEach(function (k) {
+			if (k === 'type' || !saved[k]) return;
+			var i = el.querySelector('[name="' + p + k + '"]'); if (!i) return;
+			if (i.type === 'radio') { var r = el.querySelector('[name="' + p + k + '"][value="' + saved[k] + '"]'); if (r) r.checked = true; return; }
+			if (!i.value) i.value = saved[k];
+		});
+		var officeInput = el.querySelector('.ks-office'), sel = el.querySelector('.ks-office-selected');
+		if (saved.office_code && officeInput && sel) { officeInput.value = saved.office_name; sel.hidden = false; sel.textContent = '✓ ' + saved.office_name; }
+	};
+	/* Кои стъпки се виждат: населено място след избран вид, офис/адрес след избрано населено място. */
+	Form.prototype.refreshSteps = function () {
+		var type = this.getType(), hasCity = !!(this.cityId && this.cityId.value), el = this.el;
+		el.querySelectorAll('.ks-type-option').forEach(function (o) { o.classList.toggle('is-selected', o.dataset.type === type); });
+		if (type && this.mounted) this.mounted.applyType(type);
+		var city = el.querySelector('.ks-step--city'); if (city) city.hidden = !type;
+		el.querySelectorAll('.ks-step--place').forEach(function (s) {
+			var forOffice = s.classList.contains('ks-section--office');
+			s.hidden = !type || !hasCity || (forOffice ? type === 'door' : type !== 'door');
+		});
+	};
+	Form.prototype.mount = function () {
+		var self = this, c = this.carrier === 'econt' ? cfg : (cfg.boxnow || {});
+		this.restore();
+		this.mounted = KSDeliveryForm.mount(this.el, {
+			rest: c.rest, sync: c.sync, i18n: c.i18n || cfg.i18n, map: c.map, searchAll: !!this.fixedType,
+			getType: function () { return self.getType(); },
+			onChange: function () { self.remember(); self.refreshSteps(); }
+		});
+		this.el.addEventListener('input', function () { self.refreshSteps(); });
+		/* Смяна на вида (Еконт): нова цена на ставката и следваща стъпка. */
+		this.el.addEventListener('change', function (e) {
+			if (!e.target.classList.contains('ks-type')) return;
+			self.remember();
+			self.refreshSteps();
+			$(document.body).trigger('update_checkout');
+		});
+	};
 
 	var HIDDEN = ['billing_company', 'billing_country', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_postcode'];
 	var requiredMemo = {};
-	function toggleRequired(econt) {
+	function toggleRequired(ours) {
 		HIDDEN.forEach(function (id) {
 			var row = document.getElementById(id + '_field'); if (!row) return;
 			if (!(id in requiredMemo)) requiredMemo[id] = row.classList.contains('validate-required');
 			if (!requiredMemo[id]) return;
-			row.classList.toggle('validate-required', !econt);
+			row.classList.toggle('validate-required', !ours);
 		});
 	}
 
-	/* Наличните видове и цените идват от ставката (фрагмент #ks-type-options при всяко обновяване). */
+	/* Наличните видове и цените идват от ставките (фрагмент #ks-type-options при всяко обновяване), по куриер. */
 	function readOptions() {
 		var el = document.getElementById('ks-type-options');
 		try { options = el ? (JSON.parse(el.textContent) || {}) : {}; } catch (e) { options = {}; }
-		var min = null;
-		TYPES.forEach(function (t) {
-			var opt = root.querySelector('.ks-type-option[data-type="' + t + '"]'); if (!opt) return;
-			var available = !!options[t];
-			opt.hidden = !available;
-			opt.querySelector('input').disabled = !available;
-			opt.querySelector('.ks-type-option__price').textContent = available ? options[t].price : '';
-			if (available && (min === null || options[t].cost < min.cost)) min = options[t];
+		Object.keys(carriers).forEach(function (carrier) {
+			var opts = options[carrier] || {}, min = null, form = forms[carrier];
+			Object.keys(opts).forEach(function (t) {
+				if (min === null || opts[t].cost < min.cost) min = opts[t];
+				if (!form) return;
+				var opt = form.el.querySelector('.ks-type-option[data-type="' + t + '"]');
+				if (opt) opt.querySelector('.ks-type-option__price').textContent = opts[t].price;
+			});
+			if (form) {
+				TYPES.forEach(function (t) {
+					var opt = form.el.querySelector('.ks-type-option[data-type="' + t + '"]'); if (!opt) return;
+					var available = !!opts[t];
+					opt.hidden = !available;
+					opt.querySelector('input').disabled = !available;
+					if (!available) opt.querySelector('.ks-type-option__price').textContent = '';
+				});
+			}
+			var sub = root.querySelector('.ks-carrier-option[data-carrier="' + carrier + '"] .ks-carrier-option__sub');
+			if (sub) sub.textContent = min ? (min.cost > 0 ? (cfg.i18n.from || 'от') + ' ' + min.price : min.price) : '';
 		});
-		var sub = root.querySelector('.ks-carrier-option[data-method="' + cfg.methodId + '"] .ks-carrier-option__sub');
-		if (sub) sub.textContent = min ? (min.cost > 0 ? (cfg.i18n.from || 'от') + ' ' + min.price : min.price) : '';
 	}
 
 	/* Куриерите: коя карта е избрана, коя ставка е налична. */
@@ -97,57 +161,34 @@
 		}
 	}
 
-	/* Кои стъпки се виждат: населено място след избран вид, офис/адрес след избрано населено място. */
-	function refreshSteps() {
-		var type = getType();
-		var hasCity = !!cityId.value;
-		root.querySelectorAll('.ks-type-option').forEach(function (o) { o.classList.toggle('is-selected', o.dataset.type === type); });
-		if (type) form.applyType(type);
-		root.querySelector('.ks-step--city').hidden = !type;
-		root.querySelectorAll('.ks-step--place').forEach(function (s) {
-			var forOffice = s.classList.contains('ks-section--office');
-			s.hidden = !type || !hasCity || (forOffice ? type === 'door' : type !== 'door');
-		});
-	}
-
 	function apply() {
-		var available = econtAvailable();
-		var econt = available && econtChosen();
+		var available = anyAvailable();
+		var carrier = available ? chosenCarrier() : '';
 		root.hidden = !available;
-		document.body.classList.toggle('ks-econt-selected', econt);
-		toggleRequired(econt);
+		document.body.classList.toggle('ks-carrier-selected', !!carrier);
+		toggleRequired(!!carrier);
 		if (!available) { document.body.classList.remove('ks-hide-rates'); return; }
 		refreshCarriers();
-		carrierForm.hidden = !econt;
-		if (!econt) return;
 		readOptions();
-		if (!getType()) {
-			var saved = recall();
-			setType((saved && saved.type) || cfg.defaultType || '');
+		Object.keys(forms).forEach(function (id) { forms[id].el.hidden = id !== carrier; });
+		var form = forms[carrier];
+		if (!form) return;
+		if (carrier === 'econt' && !form.getType()) {
+			var saved = form.recall();
+			form.setType((saved && saved.type) || cfg.defaultType || '');
 		}
-		refreshSteps();
+		form.refreshSteps();
 	}
 
 	function init() {
 		root = document.getElementById('ks-delivery');
 		if (!root || root.dataset.ksReady) return;
 		root.dataset.ksReady = '1';
-		cityId = root.querySelector('.ks-city-id');
-		carrierForm = root.querySelector('.ks-carrier-form');
-
-		var saved = recall();
-		if (saved) {
-			Object.keys(saved).forEach(function (k) {
-				if (k === 'type' || !saved[k]) return;
-				var i = root.querySelector('[name="ks_' + k + '"]'); if (!i) return;
-				if (i.type === 'radio') { var r = root.querySelector('[name="ks_' + k + '"][value="' + saved[k] + '"]'); if (r) r.checked = true; return; }
-				if (!i.value) i.value = saved[k];
-			});
-			var officeInput = root.querySelector('.ks-office'), sel = root.querySelector('.ks-office-selected');
-			if (saved.office_code) { officeInput.value = saved.office_name; sel.hidden = false; sel.textContent = '✓ ' + saved.office_name; }
-		}
-		form = KSDeliveryForm.mount(root, { rest: cfg.rest, sync: cfg.sync, i18n: cfg.i18n, map: cfg.map, getType: getType, onChange: function () { remember(); refreshSteps(); } });
-		root.addEventListener('input', refreshSteps);
+		root.querySelectorAll('.ks-carrier-form[data-carrier]').forEach(function (el) {
+			var f = new Form(el, el.dataset.carrier);
+			forms[f.carrier] = f;
+			f.mount();
+		});
 
 		/* Карта на куриер: избира ставката му; WooCommerce обновява прегледа при change. */
 		root.addEventListener('click', function (e) {
@@ -158,17 +199,10 @@
 			apply();
 		});
 
-		/* Смяна на вида: нова цена на ставката и следваща стъпка. */
-		root.addEventListener('change', function (e) {
-			if (!e.target.classList.contains('ks-type')) return;
-			remember();
-			refreshSteps();
-			$(document.body).trigger('update_checkout');
-		});
-
 		apply();
-		/* Запомнен избор (localStorage) различен от този на сървъра → преизчисли ставката. */
-		if (econtChosen() && getType() && getType() !== (root.dataset.type || '')) {
+		/* Запомнен избор на вид (localStorage) различен от този на сървъра → преизчисли ставката. */
+		var econt = forms.econt;
+		if (econt && chosenCarrier() === 'econt' && econt.getType() && econt.getType() !== (root.dataset.type || '')) {
 			$(document.body).trigger('update_checkout');
 		}
 	}

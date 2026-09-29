@@ -273,3 +273,17 @@ interface CarrierInterface {
 
 - Синхронизацията след обновяване се пускаше на plugins_loaded, а Action Scheduler приема задачи чак след init → извикването се губеше (офисите се напълниха от нощната задача). Вече се заявява на init:20.
 - HookCallbacksTest покрива и `[ Клас::class, 'x' ]`, низови callbacks 'Клас::x', извиквания Клас::x() между нашите класове, двойни кавички и главния файл. Проверено: хваща преименувани DeliveryFormView::enqueue_scripts и Installer::activate.
+
+
+## 20. Box Now (0.5.0)
+
+- Втори куриер по същия интерфейс: `BoxNowCarrier` (id `boxnow`, метод `ks_boxnow`, само вид „автомат“).
+- Данни за достъп от писмото на Box Now: Client ID/Secret, Partner ID, Warehouse ID; Secret се въвежда само в настройките на сайта.
+- Автомати: нощна синхронизация от публичния JSON (locationapi-production.boxnow.bg/v1/apms_bg-BG.json) в `ks_boxnow_lockers`;
+  градът се извлича от полетата на автомата (`BoxNowLockers::derive_city`), id на града = crc32 на името. Fallback: /destinations с токен.
+- Чекаут: карта „Box Now“ активна; форма с префикс `ksbn_` (град → автомат, най-близък, карта), общ JS `KSDeliveryForm`.
+  `ClassicCheckout` вече е по куриер (`chosen_carrier()`), user meta `_ks_delivery_boxnow`.
+- Пратка: `POST /delivery-requests` (COD = цялата сума на поръчката, до 5000; отделение от размерите на продуктите или по подразбиране;
+  телефон в формат +359 xx xxx xxxx; orderNumber = номер на поръчката, при повторна заявка „-2“). Етикет: `/parcels/{id}/label.pdf` с токен,
+  пази се в uploads/kanelov-shipping/. Отказ: `/parcels/{id}:cancel`. Статус: `GET /parcels?parcelId=`.
+- Следва: webhook за статуси (един URL на партньор, регистрира се от Box Now), блоков чекаут.

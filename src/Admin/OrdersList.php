@@ -1,15 +1,14 @@
 <?php
 namespace Kanelov\Shipping\Admin;
 
-use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
 use Kanelov\Shipping\Order\OrderMeta;
 use Kanelov\Shipping\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Колона „Еконт“ в списъка с поръчки (с бутон за бърза товарителница) и масово действие „Създай товарителници“
- * (по дата на поръчката).
+ * Колона „Товарителница“ в списъка с поръчки (с бутон за бърза товарителница при куриера на поръчката) и масово
+ * действие „Създай товарителници“ (по дата на поръчката).
  * Регистрира се и за класическия екран (shop_order), и за HPOS (wc-orders).
  */
 final class OrdersList {
@@ -53,11 +52,11 @@ final class OrdersList {
 		foreach ( $columns as $key => $label ) {
 			$out[ $key ] = $label;
 			if ( $key === 'order_total' ) {
-				$out[ self::COLUMN ] = __( 'Еконт', 'kanelov-shipping' );
+				$out[ self::COLUMN ] = __( 'Товарителница', 'kanelov-shipping' );
 			}
 		}
 		if ( ! isset( $out[ self::COLUMN ] ) ) {
-			$out[ self::COLUMN ] = __( 'Еконт', 'kanelov-shipping' );
+			$out[ self::COLUMN ] = __( 'Товарителница', 'kanelov-shipping' );
 		}
 		return $out;
 	}
@@ -87,13 +86,14 @@ final class OrdersList {
 		$carrier  = Plugin::instance()->carriers()->get( $delivery->carrier );
 		echo '<span class="ks-col-shipment">';
 		if ( ! empty( $shipment['number'] ) ) {
+			$href = $carrier ? ( $carrier->label_url( $order ) ?: $carrier->tracking_link( (string) $shipment['number'] ) ) : '';
 			printf(
-				'<a href="%s" target="_blank" rel="noopener">%s</a>%s',
-				esc_url( ! empty( $shipment['pdf_url'] ) ? $shipment['pdf_url'] : EcontCarrier::tracking_url( $shipment['number'] ) ),
-				esc_html( $shipment['number'] ),
+				'%s%s%s',
+				$href !== '' ? '<a href="' . esc_url( $href ) . '" target="_blank" rel="noopener">' . esc_html( $shipment['number'] ) . '</a>' : '<strong>' . esc_html( $shipment['number'] ) . '</strong>',
+				$carrier ? ' <span class="ks-mini">' . esc_html( $carrier->label() ) . '</span>' : '',
 				! empty( $shipment['status'] ) ? '<span class="ks-mini">' . esc_html( $shipment['status'] ) . '</span>' : ''
 			);
-		} else {
+		} elseif ( $carrier ) {
 			printf(
 				'<a class="button button-small ks-col-create" href="%s" title="%s">%s</a>',
 				esc_url( self::single_url( $order->get_id() ) ),
@@ -108,7 +108,7 @@ final class OrdersList {
 	}
 
 	public function bulk_actions( array $actions ): array {
-		$actions[ self::BULK ] = __( 'Еконт: създай товарителници', 'kanelov-shipping' );
+		$actions[ self::BULK ] = __( 'Създай товарителници (Еконт / Box Now)', 'kanelov-shipping' );
 		return $actions;
 	}
 
@@ -116,9 +116,8 @@ final class OrdersList {
 		if ( $action !== self::BULK || ! current_user_can( 'edit_shop_orders' ) ) {
 			return $redirect;
 		}
-		$carrier = Plugin::instance()->carriers()->get( EcontCarrier::ID );
-		$ok      = 0;
-		$fail    = [];
+		$ok   = 0;
+		$fail = [];
 
 		// По дата на поръчката (най-старата първа), за да излизат товарителниците подред в Еконт.
 		$orders = [];
@@ -131,8 +130,10 @@ final class OrdersList {
 		usort( $orders, static fn( \WC_Order $a, \WC_Order $b ) => ( $a->get_date_created()?->getTimestamp() ?? 0 ) <=> ( $b->get_date_created()?->getTimestamp() ?? 0 ) ?: $a->get_id() <=> $b->get_id() );
 
 		foreach ( $orders as $order ) {
-			if ( OrderMeta::get_delivery( $order )->is_empty() ) {
-				$fail[] = sprintf( '#%s: %s', $order->get_order_number(), __( 'не е с доставка Еконт', 'kanelov-shipping' ) );
+			$delivery = OrderMeta::get_delivery( $order );
+			$carrier  = $delivery->is_empty() ? null : Plugin::instance()->carriers()->get( $delivery->carrier );
+			if ( ! $carrier ) {
+				$fail[] = sprintf( '#%s: %s', $order->get_order_number(), __( 'не е с доставка Еконт или Box Now', 'kanelov-shipping' ) );
 				continue;
 			}
 			if ( ! empty( OrderMeta::get_shipment( $order )['number'] ) ) {
@@ -161,10 +162,10 @@ final class OrdersList {
 		$fail  = [];
 		if ( ! $order ) {
 			$fail[] = __( 'Поръчката не е намерена.', 'kanelov-shipping' );
-		} elseif ( OrderMeta::get_delivery( $order )->is_empty() ) {
-			$fail[] = sprintf( '#%s: %s', $order->get_order_number(), __( 'не е с доставка Еконт', 'kanelov-shipping' ) );
+		} elseif ( OrderMeta::get_delivery( $order )->is_empty() || ! Plugin::instance()->carriers()->get( OrderMeta::get_delivery( $order )->carrier ) ) {
+			$fail[] = sprintf( '#%s: %s', $order->get_order_number(), __( 'не е с доставка Еконт или Box Now', 'kanelov-shipping' ) );
 		} else {
-			$result = Plugin::instance()->carriers()->get( EcontCarrier::ID )->create_label( $order );
+			$result = Plugin::instance()->carriers()->get( OrderMeta::get_delivery( $order )->carrier )->create_label( $order );
 			if ( $result->success ) {
 				$ok = 1;
 			} else {
@@ -184,7 +185,7 @@ final class OrdersList {
 			return;
 		}
 		delete_transient( $key );
-		printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( sprintf( __( 'Еконт: създадени %d товарителници.', 'kanelov-shipping' ), (int) $notice['ok'] ) ) );
+		printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( sprintf( __( 'Създадени %d товарителници.', 'kanelov-shipping' ), (int) $notice['ok'] ) ) );
 		if ( ! empty( $notice['fail'] ) ) {
 			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Неуспешни:', 'kanelov-shipping' ) . '</p><ul>';
 			foreach ( $notice['fail'] as $line ) {

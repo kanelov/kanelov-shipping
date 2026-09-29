@@ -4,6 +4,7 @@
 .ks-delivery .optional { display: none; }
 .ks-row--city { position: relative; }
 .ks-office-selected { margin: -.5em 0 1em; font-size: .95em; }
+.ks-notice { margin: 0 0 1em; padding: 8px 12px; border-left: 3px solid var(--theme-palette-color-1, #e26b3a); background: var(--theme-palette-color-6, #f3f4f6); font-size: .95em; }
 
 /* Куриер: карти, сивата е „скоро“ */
 .ks-carrier-picker { border: 0; padding: 0; margin: 0 0 1.25em; min-width: 0; }
@@ -84,15 +85,15 @@ body.ks-hide-rates #shipping_method li.ks-current input[type="radio"] { display:
 .ks-combo__item--muted { opacity: .6; cursor: default; }
 .ks-combo__group { padding: 6px 12px 2px; font-size: .75em; text-transform: uppercase; letter-spacing: .04em; opacity: .6; }
 
-/* Скриване на стандартните адресни полета при доставка с Еконт */
-body.ks-econt-selected #billing_company_field,
-body.ks-econt-selected #billing_country_field,
-body.ks-econt-selected #billing_address_1_field,
-body.ks-econt-selected #billing_address_2_field,
-body.ks-econt-selected #billing_city_field,
-body.ks-econt-selected #billing_state_field,
-body.ks-econt-selected #billing_postcode_field,
-body.ks-econt-selected .woocommerce-shipping-fields { display: none !important; }
+/* Скриване на стандартните адресни полета при доставка с наш куриер */
+body.ks-carrier-selected #billing_company_field,
+body.ks-carrier-selected #billing_country_field,
+body.ks-carrier-selected #billing_address_1_field,
+body.ks-carrier-selected #billing_address_2_field,
+body.ks-carrier-selected #billing_city_field,
+body.ks-carrier-selected #billing_state_field,
+body.ks-carrier-selected #billing_postcode_field,
+body.ks-carrier-selected .woocommerce-shipping-fields { display: none !important; }
 
 /* Карта в диалог */
 .ks-delivery--admin .ks-map-open { margin: -.5em 0 1em; font-size: .9em; }
