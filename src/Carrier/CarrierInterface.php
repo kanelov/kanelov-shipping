@@ -35,6 +35,9 @@ interface CarrierInterface {
 
 	public function delete_label( \WC_Order $order ): LabelResult;
 
+	/** Премахва записа за товарителницата само от сайта (без заявка към куриера). */
+	public function forget_label( \WC_Order $order, string $reason = '' ): LabelResult;
+
 	public function track( \WC_Order $order ): TrackingResult;
 
 	/** Публичен адрес за проследяване на пратка ('' = куриерът няма такъв). */

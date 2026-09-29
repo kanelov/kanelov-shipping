@@ -200,7 +200,7 @@ final class OrderMetabox {
 		$settings = new BoxNowSettings();
 		$has      = ! empty( $shipment['number'] );
 		$weight   = $this->order_weight( $order, new EcontSettings() );
-		$dims     = EcontCarrier::order_dimensions( $order, new EcontSettings() );
+		$dims     = BoxNowCarrier::order_dimensions( $order );
 		$auto     = $dims ? BoxNowLabelBuilder::compartment_for( $dims ) : $settings->default_compartment();
 		?>
 		<div class="ks-order__notices"></div>

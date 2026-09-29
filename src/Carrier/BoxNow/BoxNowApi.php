@@ -106,7 +106,7 @@ final class BoxNowApi {
 		if ( $body !== null ) {
 			$headers['Content-Type'] = 'application/json';
 			$args['headers']         = $headers;
-			$args['body']            = wp_json_encode( $body );
+			$args['body']            = wp_json_encode( $body ?: new \stdClass() ); // празно тяло е {} (обект), не []
 		}
 		$response = wp_remote_request( $url, $args );
 		if ( is_wp_error( $response ) ) {

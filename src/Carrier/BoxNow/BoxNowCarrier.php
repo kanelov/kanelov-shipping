@@ -115,6 +115,11 @@ final class BoxNowCarrier implements CarrierInterface {
 		return trim( 'Box Now: ' . ( $city !== '' && ! str_contains( $name, $city ) ? $city . ', ' : '' ) . $name . ' [' . $d->office_code . ']' );
 	}
 
+	/** Размери на пратката само от продуктите (без настройката по подразбиране на Еконт); null = ползва се размерът по подразбиране. */
+	public static function order_dimensions( \WC_Order $order ): ?array {
+		return EcontCarrier::order_dimensions( $order, new \Kanelov\Shipping\Carrier\Econt\EcontSettings( [] ) );
+	}
+
 	/** Събира данните за BoxNowLabelBuilder от поръчката и настройките. */
 	public function build_request( \WC_Order $order, array $options = [] ): array {
 		$settings = $this->settings();
@@ -163,7 +168,7 @@ final class BoxNowCarrier implements CarrierInterface {
 			'options'      => array_merge( [
 				'weight'       => 0,
 				'compartment'  => 0,
-				'dimensions'   => EcontCarrier::order_dimensions( $order, new \Kanelov\Shipping\Carrier\Econt\EcontSettings() ),
+				'dimensions'   => self::order_dimensions( $order ),
 				'allow_return' => $settings->allow_return(),
 				'notify_email' => $settings->notify_email(),
 				'description'  => '',
@@ -196,16 +201,28 @@ final class BoxNowCarrier implements CarrierInterface {
 			return LabelResult::failure( [ sprintf( __( 'Поръчката вече има пратка %s. Откажете я, преди да създадете нова.', 'kanelov-shipping' ), $existing['number'] ) ] );
 		}
 		try {
-			$body     = $this->build_request( $order, $options );
-			$response = $this->settings()->api()->create_delivery_request( $body );
+			$body = $this->build_request( $order, $options );
+			try {
+				$response = $this->settings()->api()->create_delivery_request( $body );
+			} catch ( BoxNowApiException $e ) {
+				if ( $e->type() !== 'P410' ) {
+					throw $e;
+				}
+				// Номерът вече е ползван в Box Now (напр. загубен отговор): следващ опит с наставка „-N“.
+				$this->bump_attempt( $order );
+				$body     = $this->build_request( $order, $options );
+				$response = $this->settings()->api()->create_delivery_request( $body );
+			}
 		} catch ( BoxNowApiException $e ) {
 			return LabelResult::failure( $e->messages() );
 		}
 		$parcel = (string) ( $response['parcels'][0]['id'] ?? '' );
 		if ( $parcel === '' ) {
+			$this->bump_attempt( $order ); // заявката може да е приета: следващият опит е с нов номер
+			$order->save();
 			return LabelResult::failure( [ __( 'Box Now не върна номер на пратка.', 'kanelov-shipping' ) ], $response );
 		}
-		$order->update_meta_data( '_ks_boxnow_attempt', (int) $order->get_meta( '_ks_boxnow_attempt', true ) + 1 );
+		$this->bump_attempt( $order );
 		OrderMeta::set_shipment( $order, [
 			'carrier'     => self::ID,
 			'number'      => $parcel,
@@ -232,6 +249,10 @@ final class BoxNowCarrier implements CarrierInterface {
 		$r->pdf_url         = $url;
 		$r->currency        = $order->get_currency();
 		return $r;
+	}
+
+	private function bump_attempt( \WC_Order $order ): void {
+		$order->update_meta_data( '_ks_boxnow_attempt', (int) $order->get_meta( '_ks_boxnow_attempt', true ) + 1 );
 	}
 
 	public function delete_label( \WC_Order $order ): LabelResult {

@@ -47,8 +47,10 @@ final class BoxNowLabelBuilder {
 
 		$compartment = (int) ( $options['compartment'] ?? 0 );
 		if ( ! in_array( $compartment, [ 1, 2, 3 ], true ) ) {
-			$dims        = $options['dimensions'] ?? null;
-			$compartment = is_array( $dims ) && count( $dims ) === 3 && min( $dims ) > 0 ? self::compartment_for( $dims ) : (int) ( $defaults['default_compartment'] ?? 2 );
+			$dims     = $options['dimensions'] ?? null;
+			$dims_ok  = is_array( $dims ) && count( $dims ) === 3 && min( $dims ) > 0;
+			$fallback = (int) ( $defaults['default_compartment'] ?? 2 );
+			$compartment = $dims_ok ? self::compartment_for( $dims ) : ( in_array( $fallback, [ 1, 2, 3 ], true ) ? $fallback : 2 );
 			if ( $compartment === 0 ) {
 				throw new BoxNowApiException( [ sprintf( 'Пратката (%s см) не се побира в най-голямото отделение на автомата (60×45×36 см).', implode( '×', array_map( static fn( $v ) => rtrim( rtrim( number_format( (float) $v, 1, '.', '' ), '0' ), '.' ), $dims ) ) ) ], 'TooBig' );
 			}
@@ -140,6 +142,7 @@ final class BoxNowLabelBuilder {
 
 	/** Телефон във формата на Box Now: +359 xx xxx xxxx (само цифри след кода). */
 	public static function phone( string $phone ): string {
+		$phone  = trim( (string) preg_split( '~\s*[/,;]\s*|\s+(?:или|or)\s+~ui', trim( $phone ) )[0] ); // при два номера: първият
 		$digits = preg_replace( '/[^0-9+]/', '', $phone ) ?? '';
 		if ( str_starts_with( $digits, '00' ) ) {
 			$digits = '+' . substr( $digits, 2 );

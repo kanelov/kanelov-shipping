@@ -167,11 +167,10 @@ final class BoxNowLockers {
 		global $wpdb;
 		$table = self::table();
 		$q     = trim( $q );
-		$where = $q === '' ? '' : $wpdb->prepare( 'AND (city LIKE %s OR post_code LIKE %s)', $wpdb->esc_like( $q ) . '%', $wpdb->esc_like( $q ) . '%' );
-		$rows  = $wpdb->get_results( $wpdb->prepare(
-			"SELECT city_id, city, MIN(post_code) AS post_code, COUNT(*) AS cnt FROM {$table} WHERE city <> '' {$where} GROUP BY city_id, city ORDER BY cnt DESC, city ASC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$limit
-		), ARRAY_A );
+		$like  = $wpdb->esc_like( $q ) . '%';
+		$rows  = $q === ''
+			? $wpdb->get_results( $wpdb->prepare( "SELECT city_id, city, MIN(post_code) AS post_code, COUNT(*) AS cnt FROM {$table} WHERE city <> '' GROUP BY city_id, city ORDER BY cnt DESC, city ASC LIMIT %d", $limit ), ARRAY_A )
+			: $wpdb->get_results( $wpdb->prepare( "SELECT city_id, city, MIN(post_code) AS post_code, COUNT(*) AS cnt FROM {$table} WHERE city <> '' AND (city LIKE %s OR post_code LIKE %s) GROUP BY city_id, city ORDER BY cnt DESC, city ASC LIMIT %d", $like, $like, $limit ), ARRAY_A );
 		return array_map( [ $this, 'format_city' ], (array) $rows );
 	}
 
