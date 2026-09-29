@@ -207,17 +207,18 @@
 		}
 	}
 
-	/* Общи условия: отметката става задължителна за браузъра (балонче точно до нея, без изпращане),
-	 * а редът се маркира в червено, докато не се сложи. При грешка от сървъра за условията скролва до отметката. */
+	/* Общи условия: отметката е задължителна и за браузъра (ако темата не изключва проверката му), редът се маркира
+	 * в червено, докато не се сложи. Съобщението е едно: това на WooCommerce под отметката, ако го има, иначе нашето.
+	 * При грешка от сървъра страницата скролва до сгрешеното поле (отметката или първото невалидно), а не най-горе. */
 	var TERMS_MSG = (cfg.i18n && cfg.i18n.terms) || 'Приемете Общите условия, за да продължите.';
 	function termsBox() { return document.getElementById('terms'); }
 	function termsRow() { var t = termsBox(); return t ? (t.closest('.form-row') || t.parentNode) : null; }
 	function markTerms(missing) {
 		var row = termsRow(); if (!row) return;
 		row.classList.toggle('ks-terms-missing', missing);
-		var msg = row.querySelector('.ks-terms-msg');
-		if (missing && !msg) { msg = document.createElement('span'); msg.className = 'ks-terms-msg'; msg.textContent = TERMS_MSG; row.appendChild(msg); }
-		if (!missing && msg) msg.remove();
+		var msg = row.querySelector('.ks-terms-msg'), wcMsg = row.querySelector('.checkout-inline-error-message');
+		if (missing && !msg && !wcMsg) { msg = document.createElement('span'); msg.className = 'ks-terms-msg'; msg.textContent = TERMS_MSG; row.appendChild(msg); }
+		if ((!missing || wcMsg) && msg) msg.remove();
 	}
 	function prepareTerms() {
 		var t = termsBox(); if (!t || t.dataset.ksTerms) return;
@@ -225,15 +226,27 @@
 		t.required = true;
 		t.addEventListener('change', function () { markTerms(!t.checked); });
 	}
+	function scrollToField(row) {
+		$('html, body').stop(true); /* спира скролването на WooCommerce към горното съобщение */
+		setTimeout(function () {
+			$('html, body').stop(true);
+			row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+			var input = row.querySelector('input, select, textarea'); if (input) input.focus({ preventScroll: true });
+		}, 60);
+	}
 	$(document.body).on('click', '#place_order', function () {
 		var t = termsBox(); if (!t) return;
 		markTerms(!t.checked);
 		if (!t.checked) { t.focus(); }
 	});
 	$(document.body).on('checkout_error', function () {
-		if (!document.querySelector('.woocommerce-error [data-id="terms"], .woocommerce-error li[data-id="terms"]')) return;
-		markTerms(true);
-		var row = termsRow(); if (row) { row.scrollIntoView({ block: 'center' }); termsBox().focus(); }
+		var target = null;
+		if (document.querySelector('.woocommerce-error [data-id="terms"]')) { markTerms(true); target = termsRow(); }
+		if (!target) {
+			var bad = document.querySelector('form.checkout .form-row.woocommerce-invalid, form.checkout .checkout-inline-error-message');
+			target = bad ? (bad.closest('.form-row') || bad) : null;
+		}
+		if (target) scrollToField(target);
 	});
 
 	$(document.body).on('updated_checkout', function () { init(); apply(); prepareTerms(); });
