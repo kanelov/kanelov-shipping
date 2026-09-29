@@ -45,6 +45,7 @@ final class DeliveryFormView {
 				'close'        => __( 'Затвори', 'kanelov-shipping' ),
 				'mapTitle'     => __( 'Офиси и Еконтомати', 'kanelov-shipping' ),
 				'noCoords'     => __( 'Няма офиси с координати за това населено място.', 'kanelov-shipping' ),
+				'terms'        => __( 'Приемете Общите условия, за да продължите.', 'kanelov-shipping' ),
 			],
 		];
 	}

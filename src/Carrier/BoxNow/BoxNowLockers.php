@@ -236,13 +236,16 @@ final class BoxNowLockers {
 	/** Същата форма като офисите на Еконт, за да работи общият JavaScript. */
 	private function format_locker( array $r ): array {
 		$address = trim( (string) $r['address'] );
+		$name    = trim( (string) $r['name'] );
+		// Box Now често слага адреса и в името („BOX NOW - ул. Глазне 37, Банско - 24/7“): тогава не се повтаря.
+		$has_address = $address !== '' && $address !== $name && mb_stripos( $name, trim( $address, ' ,.' ) ) === false;
 		return [
 			'id'      => (string) $r['id'],
 			'code'    => (string) $r['id'],
 			'city_id' => (int) $r['city_id'],
 			'name'    => (string) $r['name'],
 			'address' => $address,
-			'label'   => trim( $r['name'] . ( $address !== '' && $address !== $r['name'] ? ' – ' . $address : '' ) ),
+			'label'   => trim( $name . ( $has_address ? ' – ' . $address : '' ) ),
 			'lat'     => (float) $r['latitude'] ?: null,
 			'lng'     => (float) $r['longitude'] ?: null,
 			'hours'   => (string) ( $r['note'] ?? '' ),

@@ -104,3 +104,8 @@ body.ks-carrier-selected .woocommerce-shipping-fields { display: none !important
 .ks-map-dialog__map { height: min(70vh, 560px); width: 100%; }
 .ks-map-popup b { display: block; margin-bottom: 4px; }
 .ks-map-popup button { margin-top: 6px; }
+
+/* Общи условия: неприета отметка при опит за поръчка */
+.form-row.ks-terms-missing { outline: 2px solid #c62828; outline-offset: 6px; border-radius: 6px; background: rgba(198, 40, 40, .06); }
+.form-row.ks-terms-missing label, .form-row.ks-terms-missing .woocommerce-terms-and-conditions-checkbox-text { color: #c62828; font-weight: 600; }
+.ks-terms-msg { display: block; color: #c62828; font-size: .95em; margin: .4em 0 0; }

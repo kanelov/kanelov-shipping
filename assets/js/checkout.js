@@ -207,7 +207,36 @@
 		}
 	}
 
-	$(document.body).on('updated_checkout', function () { init(); apply(); });
+	/* Общи условия: отметката става задължителна за браузъра (балонче точно до нея, без изпращане),
+	 * а редът се маркира в червено, докато не се сложи. При грешка от сървъра за условията скролва до отметката. */
+	var TERMS_MSG = (cfg.i18n && cfg.i18n.terms) || 'Приемете Общите условия, за да продължите.';
+	function termsBox() { return document.getElementById('terms'); }
+	function termsRow() { var t = termsBox(); return t ? (t.closest('.form-row') || t.parentNode) : null; }
+	function markTerms(missing) {
+		var row = termsRow(); if (!row) return;
+		row.classList.toggle('ks-terms-missing', missing);
+		var msg = row.querySelector('.ks-terms-msg');
+		if (missing && !msg) { msg = document.createElement('span'); msg.className = 'ks-terms-msg'; msg.textContent = TERMS_MSG; row.appendChild(msg); }
+		if (!missing && msg) msg.remove();
+	}
+	function prepareTerms() {
+		var t = termsBox(); if (!t || t.dataset.ksTerms) return;
+		t.dataset.ksTerms = '1';
+		t.required = true;
+		t.addEventListener('change', function () { markTerms(!t.checked); });
+	}
+	$(document.body).on('click', '#place_order', function () {
+		var t = termsBox(); if (!t) return;
+		markTerms(!t.checked);
+		if (!t.checked) { t.focus(); }
+	});
+	$(document.body).on('checkout_error', function () {
+		if (!document.querySelector('.woocommerce-error [data-id="terms"], .woocommerce-error li[data-id="terms"]')) return;
+		markTerms(true);
+		var row = termsRow(); if (row) { row.scrollIntoView({ block: 'center' }); termsBox().focus(); }
+	});
+
+	$(document.body).on('updated_checkout', function () { init(); apply(); prepareTerms(); });
 	$(document.body).on('change', 'input[name^="shipping_method"]', function () { if (root) apply(); });
-	$(init);
+	$(function () { init(); prepareTerms(); });
 })(jQuery);

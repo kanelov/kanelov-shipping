@@ -3,7 +3,7 @@
  * Plugin Name: Kanelov Shipping (Еконт и Box Now)
  * Plugin URI: https://github.com/kanelov
  * Description: Доставка с Еконт (офис, Еконтомат, адрес) и Box Now (автомат) за WooCommerce с товарителници от поръчката.
- * Version: 0.5.0
+ * Version: 0.5.1
  * Author: Kanelov
  * Text Domain: kanelov-shipping
  * Domain Path: /languages
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KS_VERSION', '0.5.0' );
+define( 'KS_VERSION', '0.5.1' );
 define( 'KS_FILE', __FILE__ );
 define( 'KS_DIR', __DIR__ );
 define( 'KS_URL', plugin_dir_url( __FILE__ ) );
