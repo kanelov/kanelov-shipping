@@ -181,6 +181,11 @@ final class EcontLabelBuilder {
 		// Ако доставката се пада в почивен ден: workday = първи работен ден, halfday = събота.
 		$label['holidayDeliveryDay'] = ( $opt['holiday_delivery_day'] ?? '' ) === 'halfday' ? 'halfday' : 'workday';
 
+		// Кой плаща куриерската услуга и връщането, ако получателят откаже пратката (по подразбиране получателят).
+		$reject                               = ( $opt['reject_pay_side'] ?? 'receiver' ) === 'sender' ? 'sender' : 'receiver';
+		$label['rejectOriginalParcelPaySide'] = $reject;
+		$label['rejectReturnParcelPaySide']   = $reject;
+
 		// Инструкции от профила (връщане, вземане, предаване).
 		$instructions = [];
 		foreach ( (array) ( $opt['instructions'] ?? [] ) as $i ) {

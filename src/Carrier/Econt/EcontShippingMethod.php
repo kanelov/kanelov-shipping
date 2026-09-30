@@ -272,6 +272,14 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 					'default'     => 'yes',
 					'description' => __( 'Пример: стока 19,90 €, доставка в чекаута 2,50 €, цена на Еконт 3,59 €. Куриерът събира 19,90 € наложен платеж и 2,50 € за доставка, а разликата 1,09 € е за ваша сметка по споразумението. Изключете, ако предпочитате доставката да е в наложения платеж.', 'kanelov-shipping' ),
 				],
+				'reject_pay_side' => [
+					'title'       => __( 'При отказ на пратката плаща', 'kanelov-shipping' ),
+					'type'        => 'select',
+					'default'     => 'receiver',
+					'options'     => [ 'receiver' => __( 'Получателят', 'kanelov-shipping' ), 'sender' => __( 'Подателят (вие)', 'kanelov-shipping' ) ],
+					'description' => __( 'Ако получателят откаже пратката, кой дължи куриерската услуга и връщането. Старите товарителници бяха с „получателят“.', 'kanelov-shipping' ),
+					'desc_tip'    => true,
+				],
 				'sms_notification' => [
 					'title'   => __( 'SMS известие до получателя', 'kanelov-shipping' ),
 					'type'    => 'checkbox',

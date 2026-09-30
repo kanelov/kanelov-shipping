@@ -179,6 +179,11 @@ final class EcontSettings {
 		return in_array( $v, [ 'accept', 'test' ], true ) ? $v : '';
 	}
 
+	/** Кой плаща при отказ на пратката от получателя: 'receiver' | 'sender'. */
+	public function reject_pay_side(): string {
+		return (string) $this->get( 'reject_pay_side', 'receiver' ) === 'sender' ? 'sender' : 'receiver';
+	}
+
 	/** 'workday' (първи работен ден) | 'halfday' (събота). */
 	public function holiday_delivery_day(): string {
 		return (string) $this->get( 'holiday_delivery_day', 'workday' ) === 'halfday' ? 'halfday' : 'workday';

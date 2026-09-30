@@ -229,6 +229,10 @@ final class EcontLabelBuilderTest extends TestCase {
 		$this->assertArrayNotHasKey( 'instructions', $label );
 		$this->assertArrayNotHasKey( 'payAfterAccept', $label );
 		$this->assertSame( 'workday', $label['holidayDeliveryDay'] );
+		$this->assertSame( 'receiver', $label['rejectOriginalParcelPaySide'] );
+		$this->assertSame( 'receiver', $label['rejectReturnParcelPaySide'] );
+		$sender = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [ 'reject_pay_side' => 'sender' ] ] ) );
+		$this->assertSame( 'sender', $sender['rejectReturnParcelPaySide'] );
 	}
 
 	public function test_phone_normalization(): void {

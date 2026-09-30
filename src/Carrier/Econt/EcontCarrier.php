@@ -223,6 +223,7 @@ final class EcontCarrier implements CarrierInterface {
 				'packing_list'            => $settings->packing_list(),
 				'pay_after'               => $settings->pay_after(),
 				'holiday_delivery_day'    => $delivery->delivery_day ?: $settings->holiday_delivery_day(),
+				'reject_pay_side'         => $settings->reject_pay_side(),
 				'instructions'            => $profile->instructions_for( $settings->instruction_ids() ),
 			], $options ),
 			'defaults'     => [
