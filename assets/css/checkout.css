@@ -1,6 +1,6 @@
 /* Kanelov Shipping – чекаут. Само структурни стилове; цветове и шрифтове идват от темата (Blocksy). */
 .ks-delivery { margin: 1.5em 0; }
-.ks-delivery[hidden], .ks-step[hidden], .ks-section[hidden] { display: none !important; }
+.ks-delivery[hidden], .ks-delivery [hidden] { display: none !important; }
 .ks-delivery .optional { display: none; }
 .ks-row--city { position: relative; }
 .ks-office-selected { margin: -.5em 0 1em; font-size: .95em; }
