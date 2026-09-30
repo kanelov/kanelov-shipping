@@ -3,6 +3,7 @@ namespace Kanelov\Shipping\Checkout;
 
 use Kanelov\Shipping\Carrier\BoxNow\BoxNowCarrier;
 use Kanelov\Shipping\Carrier\BoxNow\BoxNowSettings;
+use Kanelov\Shipping\Carrier\BoxNow\BoxNowShippingMethod;
 use Kanelov\Shipping\Carrier\CarrierInterface;
 use Kanelov\Shipping\Carrier\DeliveryData;
 use Kanelov\Shipping\Carrier\Econt\EcontCarrier;
@@ -228,6 +229,13 @@ final class ClassicCheckout {
 						</button>
 					<?php endforeach; ?>
 				</div>
+				<?php
+				// Само за администратори: защо Box Now липсва в тази количка (размери, тегло, настройки).
+				$reason = current_user_can( 'manage_woocommerce' ) && WC()->session ? (string) WC()->session->get( BoxNowShippingMethod::SESSION_REASON, '' ) : '';
+				if ( $reason !== '' ) :
+					?>
+					<p class="ks-admin-note"><?php echo esc_html( sprintf( __( 'Box Now не се предлага за тази количка: %s. (Виждат го само администратори.)', 'kanelov-shipping' ), $reason ) ); ?></p>
+				<?php endif; ?>
 			</fieldset>
 
 			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>" hidden>

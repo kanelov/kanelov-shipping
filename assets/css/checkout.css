@@ -4,6 +4,7 @@
 .ks-delivery .optional { display: none; }
 .ks-row--city { position: relative; }
 .ks-office-selected { margin: -.5em 0 1em; font-size: .95em; }
+.ks-admin-note { margin: .6em 0 0; font-size: .85em; color: #8a5a00; }
 .ks-notice { margin: 0 0 1em; padding: 8px 12px; border-left: 3px solid var(--theme-palette-color-1, #e26b3a); background: var(--theme-palette-color-6, #f3f4f6); font-size: .95em; }
 
 /* Куриер: карти, сивата е „скоро“ */

@@ -35,9 +35,20 @@ final class BoxNowShippingMethod extends \WC_Shipping_Method {
 		return explode( ':', $rate_id )[0] === self::ID;
 	}
 
+	/** Причината Box Now да липсва в тази количка (показва се само на администратори в чекаута). */
+	const SESSION_REASON = 'ks_boxnow_reason';
+
+	private static function unavailable( string $reason ): void {
+		if ( function_exists( 'WC' ) && WC()->session ) {
+			WC()->session->set( self::SESSION_REASON, $reason );
+		}
+	}
+
 	public function calculate_shipping( $package = [] ): void {
+		self::unavailable( '' );
 		$settings = new BoxNowSettings();
 		if ( ! $settings->is_configured() ) {
+			self::unavailable( __( 'няма Client ID / Client Secret в настройките', 'kanelov-shipping' ) );
 			return;
 		}
 		if ( $settings->admins_only() && ! current_user_can( 'manage_woocommerce' ) ) {
@@ -58,11 +69,13 @@ final class BoxNowShippingMethod extends \WC_Shipping_Method {
 			if ( $product->has_dimensions() ) {
 				$dims = [ (float) wc_get_dimension( (float) $product->get_length(), 'cm' ), (float) wc_get_dimension( (float) $product->get_width(), 'cm' ), (float) wc_get_dimension( (float) $product->get_height(), 'cm' ) ];
 				if ( min( $dims ) > 0 && BoxNowLabelBuilder::compartment_for( $dims ) === 0 ) {
+					self::unavailable( sprintf( __( '„%1$s“ е %2$s см и не се побира в отделение 60×45×36 см', 'kanelov-shipping' ), $product->get_name(), implode( '×', array_map( static fn( $v ) => rtrim( rtrim( number_format( (float) $v, 1, '.', '' ), '0' ), '.' ), $dims ) ) ) );
 					return;
 				}
 			}
 		}
 		if ( $weight > $settings->max_weight() ) {
+			self::unavailable( sprintf( __( 'кошницата тежи %1$s кг, а лимитът е %2$s кг', 'kanelov-shipping' ), $weight, $settings->max_weight() ) );
 			return;
 		}
 		$subtotal  = (float) apply_filters( 'kanelov_shipping/free_shipping_basis', $subtotal, $package );

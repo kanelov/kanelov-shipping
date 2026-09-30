@@ -168,7 +168,8 @@
 				mapBtn.disabled = true;
 				Promise.all([loadLeaflet(), api('offices', { city_id: els.cityId.value, type: type })]).then(function (r) {
 					mapBtn.disabled = false;
-					var offices = r[1].filter(function (o) { return o.lat && o.lng; });
+					var all = r[1] || [], offices = all.filter(function (o) { return o.lat && o.lng; });
+					if (!all.length) { window.alert(type === 'locker' ? i18n.noLockers : i18n.noOffices); return; }
 					if (!offices.length) { window.alert(i18n.noCoords); return; }
 					var d = ensureDialog(); d.showModal();
 					var el = d.querySelector('.ks-map-dialog__map');

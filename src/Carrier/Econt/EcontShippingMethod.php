@@ -427,7 +427,7 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 	/** Custom поле с бутоните за действия в настройките. */
 	public function generate_ks_actions_html( string $key, array $data ): string {
 		$sync = ( new EcontNomenclature() )->last_sync();
-		$fmt  = static fn( array $s ) => empty( $s['time'] ) ? '—' : sprintf( '%s (%d)', wp_date( 'd.m.Y H:i', (int) $s['time'] ), (int) ( $s['count'] ?? 0 ) );
+		$fmt  = static fn( array $s ) => empty( $s['time'] ) ? '—' : sprintf( '%s (%d%s)', wp_date( 'd.m.Y H:i', (int) $s['time'] ), (int) ( $s['count'] ?? 0 ), isset( $s['coords'] ) ? sprintf( __( ', с координати %d', 'kanelov-shipping' ), (int) $s['coords'] ) : '' );
 		$profile_time = ( new EcontProfile( new EcontSettings() ) )->fetched_at();
 		ob_start();
 		?>

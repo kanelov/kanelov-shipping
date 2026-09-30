@@ -84,12 +84,18 @@ final class EcontNomenclature {
 			return;
 		}
 		$this->store_offices( $offices );
-		$this->mark_synced( 'offices', count( $offices ) );
+		$this->mark_synced( 'offices', count( $offices ), $this->count_with_coords() );
 	}
 
-	private function mark_synced( string $what, int $count ): void {
+	/** Колко офиса имат координати (за диагностика в настройките: картата работи само с тях). */
+	public function count_with_coords(): int {
+		global $wpdb;
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . self::table_offices() . ' WHERE latitude IS NOT NULL AND latitude <> 0' );
+	}
+
+	private function mark_synced( string $what, int $count, ?int $coords = null ): void {
 		$state          = (array) get_option( self::OPTION_LAST_SYNC, [] );
-		$state[ $what ] = [ 'time' => time(), 'count' => $count ];
+		$state[ $what ] = [ 'time' => time(), 'count' => $count ] + ( $coords === null ? [] : [ 'coords' => $coords ] );
 		update_option( self::OPTION_LAST_SYNC, $state, false );
 		Log::info( "Econt {$what} synced", [ 'count' => $count ] );
 	}
