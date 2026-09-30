@@ -194,6 +194,13 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 				'description' => __( 'Предварително избран вид в чекаута, ако клиентът няма запомнен избор.', 'kanelov-shipping' ),
 				'desc_tip'    => true,
 			],
+			'hide_address_for_pickup' => [
+				'title'       => __( 'Взимане на място', 'kanelov-shipping' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'При „Взимане от магазина“ (Local pickup) адресните полета в чекаута също се крият', 'kanelov-shipping' ),
+				'default'     => 'yes',
+				'description' => __( 'Клиентът попълва само име, телефон и имейл. Изключете, ако издавате фактури с адрес от поръчката.', 'kanelov-shipping' ),
+			],
 			'map_enabled' => [
 				'title'   => __( 'Карта на офисите', 'kanelov-shipping' ),
 				'type'    => 'checkbox',

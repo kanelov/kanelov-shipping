@@ -26,6 +26,11 @@
 		var input = chosenRate();
 		return input ? carrierForMethod(String(input.value).split(':')[0]) : '';
 	}
+	/* Взимане на място: адресът не е нужен, полетата се крият както при наш куриер (настройка на Еконт). */
+	function pickupChosen() {
+		var input = chosenRate();
+		return !!input && (cfg.pickup || []).indexOf(String(input.value).split(':')[0]) >= 0;
+	}
 	/* Всички ставки са на наши куриери (ks_*) → изборът е само в блока, в прегледа остава избраният ред. */
 	function onlyOurRates() {
 		var inputs = rateInputs();
@@ -164,9 +169,10 @@
 	function apply() {
 		var available = anyAvailable();
 		var carrier = available ? chosenCarrier() : '';
+		var noAddress = !!carrier || pickupChosen();
 		root.hidden = !available;
-		document.body.classList.toggle('ks-carrier-selected', !!carrier);
-		toggleRequired(!!carrier);
+		document.body.classList.toggle('ks-carrier-selected', noAddress);
+		toggleRequired(noAddress);
 		if (!available) { document.body.classList.remove('ks-hide-rates'); return; }
 		refreshCarriers();
 		readOptions();

@@ -61,6 +61,27 @@ final class ClassicCheckout {
 		return null;
 	}
 
+	/** Методи на WooCommerce за взимане на място. */
+	const PICKUP_METHODS = [ 'local_pickup', 'pickup_location' ];
+
+	/** Дали е избрано взимане на място (стандартният Local pickup на WooCommerce). */
+	public static function is_pickup_chosen(): bool {
+		if ( ! function_exists( 'WC' ) || ! WC()->session || ! WC()->cart || ! WC()->cart->needs_shipping() ) {
+			return false;
+		}
+		foreach ( (array) WC()->session->get( 'chosen_shipping_methods', [] ) as $rate_id ) {
+			if ( in_array( explode( ':', (string) $rate_id )[0], self::PICKUP_METHODS, true ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Адресът на клиента не е нужен: наш куриер (офис/автомат/адрес се избират в нашия блок) или взимане на място. */
+	public static function no_address_needed(): bool {
+		return self::chosen_carrier() !== null || ( self::is_pickup_chosen() && ( new EcontSettings() )->hide_address_for_pickup() );
+	}
+
 	/** Дали в сесията е избрана ставката на Еконт. */
 	public static function is_econt_chosen(): bool {
 		return self::chosen_carrier()?->id() === EcontCarrier::ID;
@@ -161,7 +182,7 @@ final class ClassicCheckout {
 	// Полета.
 
 	public function relax_address_fields( array $fields ): array {
-		if ( ! self::chosen_carrier() ) {
+		if ( ! self::no_address_needed() ) {
 			return $fields;
 		}
 		foreach ( self::HIDDEN_BILLING as $key ) {
@@ -176,7 +197,7 @@ final class ClassicCheckout {
 	}
 
 	public function needs_shipping_address( bool $needs ): bool {
-		return self::chosen_carrier() ? false : $needs;
+		return self::no_address_needed() ? false : $needs;
 	}
 
 	public function assets(): void {
@@ -195,6 +216,7 @@ final class ClassicCheckout {
 			'saved'       => self::saved_delivery( EcontCarrier::ID )->to_array(),
 			'savedBoxNow' => self::saved_delivery( BoxNowCarrier::ID )->to_array(),
 			'defaultType' => ( new EcontSettings() )->default_type(),
+			'pickup'      => ( new EcontSettings() )->hide_address_for_pickup() ? self::PICKUP_METHODS : [],
 		] );
 	}
 

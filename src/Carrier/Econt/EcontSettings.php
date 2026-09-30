@@ -146,6 +146,11 @@ final class EcontSettings {
 		return $this->bool( 'admins_only', false );
 	}
 
+	/** При „Взимане от магазина“ (local pickup) адресните полета също се крият. */
+	public function hide_address_for_pickup(): bool {
+		return $this->bool( 'hide_address_for_pickup', true );
+	}
+
 	public function map_enabled(): bool {
 		return $this->bool( 'map_enabled', true );
 	}
