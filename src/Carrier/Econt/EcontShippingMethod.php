@@ -194,6 +194,20 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 				'description' => __( 'Предварително избран вид в чекаута, ако клиентът няма запомнен избор.', 'kanelov-shipping' ),
 				'desc_tip'    => true,
 			],
+			'delivery_time' => [
+				'title'       => __( 'Срок на доставка (на картата)', 'kanelov-shipping' ),
+				'type'        => 'text',
+				'default'     => __( '1 работен ден', 'kanelov-shipping' ),
+				'description' => __( 'Кратък текст под цената на картата „Еконт“ в чекаута. Празно = не се показва.', 'kanelov-shipping' ),
+				'desc_tip'    => true,
+			],
+			'delivery_note' => [
+				'title'       => __( 'Бележка при избран Еконт', 'kanelov-shipping' ),
+				'type'        => 'text',
+				'default'     => __( 'Еконт доставя до 1 работен ден след изпращане.', 'kanelov-shipping' ),
+				'description' => __( 'Показва се под картите на куриерите, когато клиентът е избрал Еконт. Празно = не се показва.', 'kanelov-shipping' ),
+				'desc_tip'    => true,
+			],
 			'hide_address_for_pickup' => [
 				'title'       => __( 'Взимане на място', 'kanelov-shipping' ),
 				'type'        => 'checkbox',

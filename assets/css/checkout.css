@@ -18,6 +18,9 @@
 }
 .ks-carrier-option__name { font-weight: 700; letter-spacing: .01em; }
 .ks-carrier-option__sub { font-size: .85em; opacity: .75; }
+.ks-carrier-option__time { font-size: .85em; font-weight: 600; color: var(--theme-palette-color-1, #e26b3a); }
+.ks-carrier-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--theme-palette-color-6, #f3f4f6); font-size: .95em; line-height: 1.4; }
+.ks-carrier-note svg { flex: none; margin-top: 2px; color: var(--theme-palette-color-1, #e26b3a); }
 .ks-carrier-option:hover { border-color: var(--theme-palette-color-1, #e26b3a); }
 .ks-carrier-option.is-selected { border-color: var(--theme-palette-color-1, #e26b3a); box-shadow: 0 0 0 1px var(--theme-palette-color-1, #e26b3a); }
 .ks-carrier-option:focus-visible { outline: 2px solid var(--theme-palette-color-1, #e26b3a); outline-offset: 2px; }

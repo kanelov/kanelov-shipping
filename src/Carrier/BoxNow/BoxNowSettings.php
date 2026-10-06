@@ -83,6 +83,14 @@ final class BoxNowSettings {
 		return (string) $this->get( 'notify_email' );
 	}
 
+	public function delivery_time(): string {
+		return (string) $this->get( 'delivery_time', __( '1–3 работни дни', 'kanelov-shipping' ) );
+	}
+
+	public function delivery_note(): string {
+		return (string) $this->get( 'delivery_note', __( 'Box Now доставя до автомата в срок от 1 до 3 работни дни след изпращане. Ще получите SMS с код за отваряне.', 'kanelov-shipping' ) );
+	}
+
 	public function admins_only(): bool {
 		return $this->bool( 'admins_only', false );
 	}

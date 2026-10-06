@@ -146,6 +146,14 @@ final class EcontSettings {
 		return $this->bool( 'admins_only', false );
 	}
 
+	public function delivery_time(): string {
+		return (string) $this->get( 'delivery_time', __( '1 работен ден', 'kanelov-shipping' ) );
+	}
+
+	public function delivery_note(): string {
+		return (string) $this->get( 'delivery_note', __( 'Еконт доставя до 1 работен ден след изпращане.', 'kanelov-shipping' ) );
+	}
+
 	/** При „Взимане от магазина“ (local pickup) адресните полета също се крият. */
 	public function hide_address_for_pickup(): bool {
 		return $this->bool( 'hide_address_for_pickup', true );

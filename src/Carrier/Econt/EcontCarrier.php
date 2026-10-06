@@ -30,6 +30,14 @@ final class EcontCarrier implements CarrierInterface {
 		return [ DeliveryData::TYPE_OFFICE, DeliveryData::TYPE_LOCKER, DeliveryData::TYPE_DOOR ];
 	}
 
+	public function delivery_time(): string {
+		return $this->settings()->delivery_time();
+	}
+
+	public function delivery_note(): string {
+		return $this->settings()->delivery_note();
+	}
+
 	public function tracking_link( string $number ): string {
 		return self::tracking_url( $number );
 	}

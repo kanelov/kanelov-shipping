@@ -55,6 +55,14 @@ final class BoxNowCarrier implements CarrierInterface {
 		return [ DeliveryData::TYPE_LOCKER ];
 	}
 
+	public function delivery_time(): string {
+		return $this->settings()->delivery_time();
+	}
+
+	public function delivery_note(): string {
+		return $this->settings()->delivery_note();
+	}
+
 	private function settings(): BoxNowSettings {
 		return new BoxNowSettings();
 	}

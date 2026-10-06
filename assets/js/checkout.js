@@ -176,6 +176,7 @@
 		if (!available) { document.body.classList.remove('ks-hide-rates'); return; }
 		refreshCarriers();
 		readOptions();
+		root.querySelectorAll('.ks-carrier-note[data-carrier]').forEach(function (n) { n.hidden = n.dataset.carrier !== carrier; });
 		Object.keys(forms).forEach(function (id) { forms[id].el.hidden = id !== carrier; });
 		var form = forms[carrier];
 		if (!form) return;

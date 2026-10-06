@@ -150,6 +150,20 @@ final class BoxNowShippingMethod extends \WC_Shipping_Method {
 				'default'     => 'yes',
 				'description' => __( 'Удобно за тест на жив сайт: клиентите не виждат Box Now, докато не изключите режима.', 'kanelov-shipping' ),
 			],
+			'delivery_time' => [
+				'title'       => __( 'Срок на доставка (на картата)', 'kanelov-shipping' ),
+				'type'        => 'text',
+				'default'     => __( '1–3 работни дни', 'kanelov-shipping' ),
+				'description' => __( 'Кратък текст под цената на картата „Box Now“ в чекаута. Празно = не се показва.', 'kanelov-shipping' ),
+				'desc_tip'    => true,
+			],
+			'delivery_note' => [
+				'title'       => __( 'Бележка при избран Box Now', 'kanelov-shipping' ),
+				'type'        => 'text',
+				'default'     => __( 'Box Now доставя до автомата в срок от 1 до 3 работни дни след изпращане. Ще получите SMS с код за отваряне.', 'kanelov-shipping' ),
+				'description' => __( 'Показва се под картите на куриерите, когато клиентът е избрал Box Now. Празно = не се показва.', 'kanelov-shipping' ),
+				'desc_tip'    => true,
+			],
 			'map_enabled'   => [
 				'title'   => __( 'Карта на автоматите', 'kanelov-shipping' ),
 				'type'    => 'checkbox',

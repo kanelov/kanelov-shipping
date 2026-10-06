@@ -248,9 +248,20 @@ final class ClassicCheckout {
 						<button type="button" class="ks-carrier-option" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" data-method="<?php echo esc_attr( $carrier->method_id() ); ?>">
 							<span class="ks-carrier-option__name"><?php echo esc_html( $carrier->label() ); ?></span>
 							<span class="ks-carrier-option__sub"></span>
+							<?php if ( $carrier->delivery_time() !== '' ) : ?>
+								<span class="ks-carrier-option__time"><?php echo esc_html( $carrier->delivery_time() ); ?></span>
+							<?php endif; ?>
 						</button>
 					<?php endforeach; ?>
 				</div>
+				<?php foreach ( $carriers as $carrier ) : ?>
+					<?php if ( $carrier->delivery_note() !== '' ) : ?>
+						<p class="ks-carrier-note" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" hidden>
+							<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+							<span><?php echo esc_html( $carrier->delivery_note() ); ?></span>
+						</p>
+					<?php endif; ?>
+				<?php endforeach; ?>
 				<?php
 				// Само за администратори: защо Box Now липсва в тази количка (размери, тегло, настройки).
 				$reason = current_user_can( 'manage_woocommerce' ) && WC()->session ? (string) WC()->session->get( BoxNowShippingMethod::SESSION_REASON, '' ) : '';

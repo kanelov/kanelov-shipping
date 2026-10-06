@@ -16,6 +16,12 @@ interface CarrierInterface {
 	/** Id на метода за доставка в WooCommerce (напр. ks_econt), чиято ставка избира този куриер в чекаута. */
 	public function method_id(): string;
 
+	/** Кратък срок на доставка за картата на куриера в чекаута (напр. „1 работен ден“); '' = не се показва. */
+	public function delivery_time(): string;
+
+	/** Бележка под картите, когато този куриер е избран; '' = не се показва. */
+	public function delivery_note(): string;
+
 	/** @return string[] Подмножество на DeliveryData::TYPE_* */
 	public function supported_types(): array;
 
