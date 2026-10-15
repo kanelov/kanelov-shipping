@@ -46,6 +46,24 @@ final class EcontCarrier implements CarrierInterface {
 		return (string) ( OrderMeta::get_shipment( $order )['pdf_url'] ?? '' );
 	}
 
+	public function label_pdf( \WC_Order $order ): string {
+		$url = $this->label_url( $order );
+		if ( $url === '' ) {
+			throw new \RuntimeException( __( 'Товарителницата няма PDF от Еконт.', 'kanelov-shipping' ) );
+		}
+		$response = wp_remote_get( $url, [ 'timeout' => 30, 'sslverify' => true ] );
+		if ( is_wp_error( $response ) ) {
+			throw new \RuntimeException( $response->get_error_message() );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = (string) wp_remote_retrieve_body( $response );
+		if ( $code !== 200 || ! str_starts_with( $body, '%PDF' ) ) {
+			Log::error( 'Econt label PDF download failed', [ 'order' => $order->get_id(), 'code' => $code ] );
+			throw new \RuntimeException( sprintf( __( 'Еконт не върна PDF (HTTP %d).', 'kanelov-shipping' ), $code ) );
+		}
+		return $body;
+	}
+
 	private function settings(): EcontSettings {
 		return new EcontSettings();
 	}

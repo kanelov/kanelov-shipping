@@ -1,6 +1,7 @@
 <?php
 namespace Kanelov\Shipping;
 
+use Kanelov\Shipping\Admin\LabelPrint;
 use Kanelov\Shipping\Admin\Menu;
 use Kanelov\Shipping\Admin\OrderMetabox;
 use Kanelov\Shipping\Admin\OrdersList;
@@ -67,6 +68,7 @@ final class Plugin {
 			( new SettingsActions() )->register();
 			( new OrderMetabox() )->register();
 			( new OrdersList() )->register();
+			( new LabelPrint() )->register();
 		}
 	}
 }

@@ -51,4 +51,7 @@ interface CarrierInterface {
 
 	/** Адрес на PDF етикета на товарителницата на поръчката за печат от админа ('' = няма). */
 	public function label_url( \WC_Order $order ): string;
+
+	/** Съдържанието на PDF етикета (за масов печат). Хвърля \RuntimeException с четимо съобщение при неуспех. */
+	public function label_pdf( \WC_Order $order ): string;
 }

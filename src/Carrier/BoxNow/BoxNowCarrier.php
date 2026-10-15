@@ -364,6 +364,15 @@ final class BoxNowCarrier implements CarrierInterface {
 		return wp_nonce_url( admin_url( 'admin-post.php?action=' . self::LABEL_ACTION . '&order=' . $order->get_id() ), self::LABEL_ACTION . '_' . $order->get_id() );
 	}
 
+	public function label_pdf( \WC_Order $order ): string {
+		$this->ensure_label_file( $order );
+		$file = (string) ( OrderMeta::get_shipment( $order )['pdf_file'] ?? '' );
+		if ( $file !== '' && is_readable( $file ) ) {
+			return (string) file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- локален файл
+		}
+		throw new \RuntimeException( __( 'Етикетът не можа да бъде свален от Box Now.', 'kanelov-shipping' ) );
+	}
+
 	/** Сваля етикета (ако още не е) и връща публичния му адрес; '' при грешка. */
 	public function ensure_label_file( \WC_Order $order ): string {
 		$shipment = OrderMeta::get_shipment( $order );

@@ -13,8 +13,13 @@ final class Menu {
 		add_action( 'admin_menu', [ $this, 'add' ], 60 );
 	}
 
+	/** Slug на менюто „Доставки“ (родител на подменютата). */
+	public static function parent(): string {
+		return 'admin.php?page=wc-settings&tab=shipping&section=' . \Kanelov\Shipping\Carrier\Econt\EcontShippingMethod::ID;
+	}
+
 	public function add(): void {
-		$settings = 'admin.php?page=wc-settings&tab=shipping&section=' . \Kanelov\Shipping\Carrier\Econt\EcontShippingMethod::ID;
+		$settings = self::parent();
 		$boxnow   = 'admin.php?page=wc-settings&tab=shipping&section=' . \Kanelov\Shipping\Carrier\BoxNow\BoxNowShippingMethod::ID;
 		$orders   = 'admin.php?page=wc-orders';
 		add_menu_page( __( 'Доставки', 'kanelov-shipping' ), __( 'Доставки', 'kanelov-shipping' ), 'manage_woocommerce', $settings, '', 'dashicons-car', 56.5 );

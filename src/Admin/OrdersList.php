@@ -14,8 +14,10 @@ defined( 'ABSPATH' ) || exit;
 final class OrdersList {
 
 	const COLUMN = 'ks_shipment';
-	const BULK   = 'ks_create_labels';
-	const SINGLE = 'ks_create_label';
+	const BULK         = 'ks_create_labels';
+	const BULK_PRINT   = 'ks_print_labels';
+	const BULK_CREATE_PRINT = 'ks_create_print_labels';
+	const SINGLE       = 'ks_create_label';
 
 	public function register(): void {
 		foreach ( [ 'manage_edit-shop_order_columns', 'manage_woocommerce_page_wc-orders_columns' ] as $hook ) {
@@ -93,6 +95,9 @@ final class OrdersList {
 				$carrier ? ' <span class="ks-mini">' . esc_html( $carrier->label() ) . '</span>' : '',
 				! empty( $shipment['status'] ) ? '<span class="ks-mini">' . esc_html( $shipment['status'] ) . '</span>' : ''
 			);
+			if ( ! empty( $shipment['printed_at'] ) ) {
+				echo '<span class="ks-mini ks-printed">' . esc_html( sprintf( __( 'отпечатана %s', 'kanelov-shipping' ), wp_date( 'd.m H:i', (int) $shipment['printed_at'] ) ) ) . '</span>';
+			}
 		} elseif ( $carrier ) {
 			printf(
 				'<a class="button button-small ks-col-create" href="%s" title="%s">%s</a>',
@@ -108,14 +113,25 @@ final class OrdersList {
 	}
 
 	public function bulk_actions( array $actions ): array {
-		$actions[ self::BULK ] = __( 'Създай товарителници (Еконт / Box Now)', 'kanelov-shipping' );
+		$actions[ self::BULK ]              = __( 'Създай товарителници (Еконт / Box Now)', 'kanelov-shipping' );
+		$actions[ self::BULK_PRINT ]        = __( 'Печат на товарителници', 'kanelov-shipping' );
+		$actions[ self::BULK_CREATE_PRINT ] = __( 'Създай товарителници и печат', 'kanelov-shipping' );
 		return $actions;
 	}
 
 	public function handle_bulk( string $redirect, string $action, array $ids ): string {
-		if ( $action !== self::BULK || ! current_user_can( 'edit_shop_orders' ) ) {
+		if ( ! in_array( $action, [ self::BULK, self::BULK_PRINT, self::BULK_CREATE_PRINT ], true ) || ! current_user_can( 'edit_shop_orders' ) ) {
 			return $redirect;
 		}
+		if ( $action === self::BULK_PRINT ) {
+			return LabelPrint::url( $ids );
+		}
+		$this->create_for( $ids );
+		return $action === self::BULK_CREATE_PRINT ? LabelPrint::url( $ids ) : $redirect;
+	}
+
+	/** Създава липсващите товарителници за поръчките (по дата) и оставя известие с резултата. */
+	private function create_for( array $ids ): void {
 		$ok   = 0;
 		$fail = [];
 
@@ -147,7 +163,6 @@ final class OrdersList {
 			}
 		}
 		set_transient( 'ks_bulk_notice_' . get_current_user_id(), [ 'ok' => $ok, 'fail' => $fail ], 120 );
-		return $redirect;
 	}
 
 	/** Единична товарителница от списъка: admin-post с nonce, после обратно към списъка. */

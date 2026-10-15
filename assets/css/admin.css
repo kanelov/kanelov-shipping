@@ -28,3 +28,17 @@
 #ks-order .ks-dims__inputs input { width: 33%; min-width: 0; }
 #ks-order .ks-do--forget { margin-left: 8px; color: #8a8a8a; }
 #ks-order .ks-do--forget:hover { color: #b32d2e; }
+
+/* Масов печат на товарителници */
+.ks-printed { color: #2271b1; }
+.ks-print__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 16px 0; }
+.ks-print__bar label { font-weight: 600; }
+.ks-print__status { font-weight: 600; }
+.ks-print__list { max-width: 900px; }
+.ks-print__list li { margin: 0 0 4px; }
+.ks-print__again { color: #996800; margin-left: 6px; }
+.ks-print__state { margin-left: 8px; color: #646970; }
+.ks-print__state.is-ok { color: #008a20; }
+.ks-print__state.is-error { color: #b32d2e; }
+.ks-print__frame { width: 100%; height: 75vh; border: 1px solid #dcdcde; background: #fff; margin-top: 12px; }
+.ks-print__bar a[aria-disabled="true"] { pointer-events: none; opacity: .5; }
