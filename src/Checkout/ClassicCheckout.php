@@ -42,6 +42,34 @@ final class ClassicCheckout {
 		add_filter( 'woocommerce_available_payment_gateways', [ $this, 'filter_gateways' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'assets' ] );
 		add_filter( 'woocommerce_order_shipping_to_display', [ $this, 'shipping_to_display' ], 10, 2 );
+		add_filter( 'body_class', [ $this, 'body_class' ] );
+	}
+
+	/**
+	 * Адресните полета се крият още в първия HTML (CSS по класа на body), а не след зареждане на скрипта,
+	 * за да не мигат. JavaScript-ът само сменя класа, когато клиентът смени метода.
+	 */
+	public function body_class( array $classes ): array {
+		if ( function_exists( 'is_checkout' ) && is_checkout() && ! is_order_received_page() && self::no_address_needed() ) {
+			$classes[] = 'ks-carrier-selected';
+		}
+		return $classes;
+	}
+
+	/** Дали в пакетите има ставка на наш куриер ('' = който и да е); тогава блокът/картата се показва веднага. */
+	private static function has_our_rate( string $carrier = '' ): bool {
+		if ( ! function_exists( 'WC' ) || ! WC()->shipping() ) {
+			return false;
+		}
+		foreach ( WC()->shipping()->get_packages() as $package ) {
+			foreach ( (array) ( $package['rates'] ?? [] ) as $rate ) {
+				$id = $rate instanceof \WC_Shipping_Rate ? (string) ( $rate->get_meta_data()['ks_carrier'] ?? '' ) : '';
+				if ( $id !== '' && ( $carrier === '' || $carrier === $id ) ) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	// Избор в сесията.
@@ -262,14 +290,19 @@ final class ClassicCheckout {
 		$boxnow      = self::saved_delivery( BoxNowCarrier::ID );
 		$carriers    = Plugin::instance()->carriers()->all();
 		?>
-		<div id="ks-delivery" class="ks-delivery" data-type="<?php echo esc_attr( $econt->type ); ?>" hidden>
+		<?php
+		// Началното състояние идва от сървъра (без мигане); скриптът го поддържа при смяна на метода.
+		$chosen_id = self::chosen_carrier()?->id() ?? '';
+		$show      = static fn( bool $visible ): string => $visible ? '' : ' hidden';
+		?>
+		<div id="ks-delivery" class="ks-delivery" data-type="<?php echo esc_attr( $econt->type ); ?>"<?php echo $show( self::has_our_rate() ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
 			<h3><?php esc_html_e( 'Доставка', 'kanelov-shipping' ); ?></h3>
 
 			<fieldset class="ks-step ks-step--carrier ks-carrier-picker">
 				<legend class="ks-step__label"><?php esc_html_e( 'Куриер', 'kanelov-shipping' ); ?></legend>
 				<div class="ks-carrier-picker__options">
 					<?php foreach ( $carriers as $carrier ) : ?>
-						<button type="button" class="ks-carrier-option" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" data-method="<?php echo esc_attr( $carrier->method_id() ); ?>">
+						<button type="button" class="ks-carrier-option<?php echo $carrier->id() === $chosen_id ? ' is-selected' : ''; ?>" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" data-method="<?php echo esc_attr( $carrier->method_id() ); ?>" aria-pressed="<?php echo $carrier->id() === $chosen_id ? 'true' : 'false'; ?>"<?php echo $show( self::has_our_rate( $carrier->id() ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
 							<span class="ks-carrier-option__name"><?php echo esc_html( $carrier->label() ); ?></span>
 							<span class="ks-carrier-option__sub"></span>
 							<?php if ( $carrier->delivery_time() !== '' ) : ?>
@@ -280,7 +313,7 @@ final class ClassicCheckout {
 				</div>
 				<?php foreach ( $carriers as $carrier ) : ?>
 					<?php if ( $carrier->delivery_note() !== '' ) : ?>
-						<p class="ks-carrier-note" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>" hidden>
+						<p class="ks-carrier-note" data-carrier="<?php echo esc_attr( $carrier->id() ); ?>"<?php echo $show( $carrier->id() === $chosen_id ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
 							<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
 							<span><?php echo esc_html( $carrier->delivery_note() ); ?></span>
 						</p>
@@ -295,10 +328,10 @@ final class ClassicCheckout {
 				<?php endif; ?>
 			</fieldset>
 
-			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>" hidden>
+			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( EcontCarrier::ID ); ?>"<?php echo $show( $chosen_id === EcontCarrier::ID ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
 				<?php DeliveryFormView::render( $econt, false ); ?>
 			</div>
-			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( BoxNowCarrier::ID ); ?>" data-prefix="<?php echo esc_attr( BoxNowFormView::PREFIX ); ?>" hidden>
+			<div class="ks-carrier-form" data-carrier="<?php echo esc_attr( BoxNowCarrier::ID ); ?>" data-prefix="<?php echo esc_attr( BoxNowFormView::PREFIX ); ?>"<?php echo $show( $chosen_id === BoxNowCarrier::ID ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
 				<?php BoxNowFormView::render( $boxnow, false ); ?>
 			</div>
 			<?php echo self::options_json(); // phpcs:ignore WordPress.Security.EscapeOutput -- JSON в script таг. ?>
