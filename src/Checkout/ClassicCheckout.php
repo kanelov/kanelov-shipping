@@ -31,6 +31,7 @@ final class ClassicCheckout {
 
 	public function register(): void {
 		add_filter( 'woocommerce_checkout_fields', [ $this, 'relax_address_fields' ], 100 );
+		add_filter( 'woocommerce_get_country_locale', [ $this, 'relax_country_locale' ], 99 );
 		add_filter( 'woocommerce_cart_needs_shipping_address', [ $this, 'needs_shipping_address' ] );
 		add_filter( 'woocommerce_cart_shipping_packages', [ $this, 'add_type_to_packages' ] );
 		add_action( 'woocommerce_checkout_update_order_review', [ $this, 'remember_type_from_review' ] );
@@ -194,6 +195,29 @@ final class ClassicCheckout {
 			$fields['shipping'][ $key ]['required'] = false;
 		}
 		return $fields;
+	}
+
+	/** Адресните полета от локала на държавата, които скриваме (без префикса billing_). */
+	const LOCALE_FIELDS = [ 'address_1', 'address_2', 'city', 'postcode', 'state' ];
+
+	/**
+	 * Локалът за BG също трябва да казва, че адресът не е задължителен: той стига до браузъра (wc_address_i18n_params)
+	 * и WooPayments проверява по него задължителните полета. Види ли празно „задължително“ поле, не създава плащането
+	 * с карта и поръчката пада с „Invalid or missing payment details“, макар сървърът да я приема.
+	 */
+	public function relax_country_locale( $locale ) {
+		if ( ! is_array( $locale ) || ! self::no_address_needed() ) {
+			return $locale;
+		}
+		return self::relax_locale( $locale );
+	}
+
+	/** Маха задължителността на скритите адресни полета в локала за BG. */
+	public static function relax_locale( array $locale ): array {
+		foreach ( self::LOCALE_FIELDS as $key ) {
+			$locale['BG'][ $key ] = array_merge( (array) ( $locale['BG'][ $key ] ?? [] ), [ 'required' => false ] );
+		}
+		return $locale;
 	}
 
 	public function needs_shipping_address( bool $needs ): bool {
