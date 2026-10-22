@@ -12,6 +12,7 @@ use Kanelov\Shipping\Carrier\Econt\EcontSettings;
 use Kanelov\Shipping\Checkout\BoxNowFormView;
 use Kanelov\Shipping\Checkout\DeliveryFormView;
 use Kanelov\Shipping\Order\OrderMeta;
+use Kanelov\Shipping\Order\ShippingSwitch;
 use Kanelov\Shipping\Plugin;
 
 defined( 'ABSPATH' ) || exit;
@@ -80,8 +81,19 @@ final class OrderMetabox {
 		echo '</div>';
 	}
 
-	private function render_inner( \WC_Order $order ): void {
-		if ( self::carrier_of( $order )->id() === BoxNowCarrier::ID ) {
+	/**
+	 * @param string $view_id куриер, чиято форма се показва в „Доставка“ (смяна на куриера преди запис); '' = текущият
+	 */
+	private function render_inner( \WC_Order $order, string $view_id = '' ): void {
+		$current = self::carrier_of( $order );
+		$locked  = ! empty( OrderMeta::get_shipment( $order )['number'] );
+		$view    = ( $view_id !== '' && ! $locked ) ? ( Plugin::instance()->carriers()->get( $view_id ) ?? $current ) : $current;
+		if ( $view->id() !== $current->id() ) {
+			echo '<div class="ks-order__notices"></div>';
+			$this->render_delivery_edit( $order, $view, false );
+			return;
+		}
+		if ( $current->id() === BoxNowCarrier::ID ) {
 			$this->render_boxnow( $order );
 			return;
 		}
@@ -122,17 +134,7 @@ final class OrderMetabox {
 			</div>
 		<?php endif; ?>
 
-		<details class="ks-delivery-edit" <?php echo $delivery->is_empty() ? 'open' : ''; ?>>
-			<summary>
-				<strong><?php esc_html_e( 'Доставка:', 'kanelov-shipping' ); ?></strong>
-				<?php echo $delivery->is_empty() ? esc_html__( 'не е избрана', 'kanelov-shipping' ) : esc_html( $carrier->format_delivery( $delivery ) ); ?>
-				<span class="ks-edit-hint"><?php esc_html_e( '(редактирай)', 'kanelov-shipping' ); ?></span>
-			</summary>
-			<div class="ks-delivery ks-delivery--admin" id="ks-delivery">
-				<?php DeliveryFormView::render( $delivery, true ); ?>
-				<p><button type="button" class="button ks-do" data-do="save_delivery"><?php esc_html_e( 'Запази доставката', 'kanelov-shipping' ); ?></button></p>
-			</div>
-		</details>
+		<?php $this->render_delivery_edit( $order, $carrier, $has ); ?>
 
 		<?php if ( ! $has ) : ?>
 			<div class="ks-label-form">
@@ -173,6 +175,9 @@ final class OrderMetabox {
 					<label><input type="checkbox" name="ks_opt_sms_notification" value="1" <?php checked( $settings->sms_notification() ); ?>> <?php esc_html_e( 'SMS до получателя', 'kanelov-shipping' ); ?></label>
 					<label><input type="checkbox" name="ks_opt_declared" value="1" <?php checked( $settings->declared_value_for( (float) $order->get_total() ) > 0 ); ?>> <?php esc_html_e( 'Обявена стойност', 'kanelov-shipping' ); ?></label>
 					<label><input type="checkbox" name="ks_opt_packing_list" value="1" <?php checked( $settings->packing_list() ); ?>> <?php esc_html_e( 'Опис на стоките', 'kanelov-shipping' ); ?></label>
+					<?php if ( $delivery->type !== DeliveryData::TYPE_LOCKER ) : ?>
+						<label><input type="checkbox" name="ks_opt_invoice_before_pay_cd" value="1" <?php checked( $settings->invoice_before_pay_cd() ); ?>> <?php esc_html_e( 'Фактура/опис преди плащане на НП', 'kanelov-shipping' ); ?></label>
+					<?php endif; ?>
 				</p>
 				<?php $instr = ( new EcontProfile( $settings ) )->instruction_choices(); ?>
 				<?php if ( $instr ) : ?>
@@ -189,6 +194,54 @@ final class OrderMetabox {
 				</p>
 			</div>
 		<?php endif; ?>
+		<?php
+	}
+
+	/**
+	 * „Доставка (редактирай)“: избор на куриер (ако няма товарителница) и формата на избрания куриер.
+	 * При друг куриер от текущия формата е празна, а записът сменя метода и цената на доставката в поръчката.
+	 */
+	private function render_delivery_edit( \WC_Order $order, CarrierInterface $view, bool $locked ): void {
+		$current  = self::carrier_of( $order );
+		$saved    = OrderMeta::get_delivery( $order );
+		$same     = $view->id() === $current->id();
+		$delivery = $same ? $saved : new DeliveryData();
+		$empty    = $view->id() === BoxNowCarrier::ID ? $delivery->office_code === '' : $delivery->is_empty();
+		$carriers = Plugin::instance()->carriers()->all();
+		?>
+		<details class="ks-delivery-edit" <?php echo ( $empty || ! $same ) ? 'open' : ''; ?>>
+			<summary>
+				<strong><?php esc_html_e( 'Доставка:', 'kanelov-shipping' ); ?></strong>
+				<?php echo $saved->is_empty() ? esc_html__( 'не е избрана', 'kanelov-shipping' ) : esc_html( $current->format_delivery( $saved ) ); ?>
+				<span class="ks-edit-hint"><?php esc_html_e( '(редактирай)', 'kanelov-shipping' ); ?></span>
+			</summary>
+			<div class="ks-delivery ks-delivery--admin" id="ks-delivery" data-carrier="<?php echo esc_attr( $view->id() ); ?>">
+				<?php if ( count( $carriers ) > 1 ) : ?>
+					<p class="form-row form-row-wide ks-carrier-switch">
+						<label for="ks_delivery_carrier"><?php esc_html_e( 'Куриер', 'kanelov-shipping' ); ?></label>
+						<select id="ks_delivery_carrier" name="ks_delivery_carrier" <?php disabled( $locked ); ?>>
+							<?php foreach ( $carriers as $c ) : ?>
+								<option value="<?php echo esc_attr( $c->id() ); ?>" <?php selected( $c->id(), $view->id() ); ?>><?php echo esc_html( $c->label() ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<?php if ( $locked ) : ?>
+							<span class="description"><?php esc_html_e( 'За смяна на куриера първо изтрийте или откажете товарителницата.', 'kanelov-shipping' ); ?></span>
+						<?php endif; ?>
+					</p>
+				<?php endif; ?>
+				<?php if ( ! $same ) : ?>
+					<p class="ks-switch-note"><?php echo esc_html( sprintf( __( 'Смяна от %1$s на %2$s. При запис цената за доставка се изчислява наново по цените на %2$s в чекаута (вкл. безплатна доставка над прага) и тоталът на поръчката се обновява.', 'kanelov-shipping' ), $current->label(), $view->label() ) ); ?></p>
+				<?php endif; ?>
+				<?php
+				if ( $view->id() === BoxNowCarrier::ID ) {
+					BoxNowFormView::render( $delivery, true );
+				} else {
+					DeliveryFormView::render( $delivery, true );
+				}
+				?>
+				<p><button type="button" class="button ks-do" data-do="save_delivery"><?php echo $same ? esc_html__( 'Запази доставката', 'kanelov-shipping' ) : esc_html( sprintf( __( 'Смени на %s и запази', 'kanelov-shipping' ), $view->label() ) ); ?></button></p>
+			</div>
+		</details>
 		<?php
 	}
 
@@ -232,17 +285,7 @@ final class OrderMetabox {
 			</div>
 		<?php endif; ?>
 
-		<details class="ks-delivery-edit" <?php echo $delivery->office_code === '' ? 'open' : ''; ?>>
-			<summary>
-				<strong><?php esc_html_e( 'Доставка:', 'kanelov-shipping' ); ?></strong>
-				<?php echo $delivery->office_code === '' ? esc_html__( 'не е избран автомат', 'kanelov-shipping' ) : esc_html( $carrier->format_delivery( $delivery ) ); ?>
-				<span class="ks-edit-hint"><?php esc_html_e( '(редактирай)', 'kanelov-shipping' ); ?></span>
-			</summary>
-			<div class="ks-delivery ks-delivery--admin" id="ks-delivery" data-carrier="<?php echo esc_attr( BoxNowCarrier::ID ); ?>">
-				<?php BoxNowFormView::render( $delivery, true ); ?>
-				<p><button type="button" class="button ks-do" data-do="save_delivery"><?php esc_html_e( 'Запази доставката', 'kanelov-shipping' ); ?></button></p>
-			</div>
-		</details>
+		<?php $this->render_delivery_edit( $order, $carrier, $has ); ?>
 
 		<?php if ( ! $has ) : ?>
 			<div class="ks-label-form">
@@ -304,22 +347,61 @@ final class OrderMetabox {
 		$message = '';
 		$errors  = [];
 		$extra   = [];
+		$view_id = '';
 
 		switch ( $do ) {
+			case 'view_carrier':
+				// Само показва формата на избрания куриер; нищо не се записва.
+				$view_id = sanitize_key( (string) ( $fields['ks_delivery_carrier'] ?? '' ) );
+				break;
 			case 'save_delivery':
-				$delivery = $boxnow ? BoxNowFormView::from_request( $fields ) : DeliveryFormView::from_request( $fields, EcontCarrier::ID );
-				$errors   = $carrier->validate_delivery( $delivery );
-				if ( ! $errors ) {
-					OrderMeta::set_delivery( $order, $delivery );
-					$text = $carrier->format_delivery( $delivery );
-					$order->set_shipping_address_1( $text );
-					$order->set_shipping_city( $delivery->city_name );
-					$order->set_shipping_postcode( $delivery->post_code );
-					$order->set_shipping_country( 'BG' );
-					$order->add_order_note( sprintf( __( '%1$s: доставката е променена на: %2$s', 'kanelov-shipping' ), $carrier->label(), $text ) );
-					$order->save();
-					$message = __( 'Доставката е запазена.', 'kanelov-shipping' );
+				$target = Plugin::instance()->carriers()->get( sanitize_key( (string) ( $fields['ks_delivery_carrier'] ?? '' ) ) ) ?? $carrier;
+				$switch = $target->id() !== $carrier->id();
+				if ( $switch && ! empty( OrderMeta::get_shipment( $order )['number'] ) ) {
+					$errors[] = __( 'Поръчката има товарителница. Изтрийте или откажете я, преди да смените куриера.', 'kanelov-shipping' );
+					break;
 				}
+				$delivery = $target->id() === BoxNowCarrier::ID ? BoxNowFormView::from_request( $fields ) : DeliveryFormView::from_request( $fields, EcontCarrier::ID );
+				$errors   = $target->validate_delivery( $delivery );
+				if ( $errors ) {
+					$view_id = $target->id();
+					break;
+				}
+				$old_delivery = OrderMeta::get_delivery( $order );
+				$reprice      = $switch || $old_delivery->type !== $delivery->type;
+				$quote        = $reprice ? ShippingSwitch::quote( $order, $target, $delivery ) : null;
+				if ( is_string( $quote ) ) {
+					$errors[] = $quote;
+					$view_id  = $target->id();
+					break;
+				}
+				OrderMeta::set_delivery( $order, $delivery );
+				$text = $target->format_delivery( $delivery );
+				$order->set_shipping_address_1( $text );
+				$order->set_shipping_city( $delivery->city_name );
+				$order->set_shipping_postcode( $delivery->post_code );
+				$order->set_shipping_country( 'BG' );
+				$message = __( 'Доставката е запазена.', 'kanelov-shipping' );
+				if ( $quote ) {
+					$prices = ShippingSwitch::apply( $order, $target, $quote ); // записва поръчката
+					$note   = sprintf(
+						__( 'Доставката е сменена на „%1$s“: %2$s. Цена за доставка: %3$s → %4$s.', 'kanelov-shipping' ),
+						$quote['title'],
+						$text,
+						html_entity_decode( wp_strip_all_tags( wc_price( $prices['old'], [ 'currency' => $order->get_currency() ] ) ), ENT_QUOTES, 'UTF-8' ),
+						html_entity_decode( wp_strip_all_tags( wc_price( $prices['new'], [ 'currency' => $order->get_currency() ] ) ), ENT_QUOTES, 'UTF-8' )
+					);
+					$diff = round( $prices['new'] - $prices['old'], 2 );
+					if ( $diff !== 0.0 && $order->is_paid() && $order->get_payment_method() !== 'cod' ) {
+						$note .= ' ' . sprintf( $diff > 0 ? __( 'Поръчката е платена: клиентът дължи доплащане %s.', 'kanelov-shipping' ) : __( 'Поръчката е платена: на клиента се дължи връщане %s.', 'kanelov-shipping' ), html_entity_decode( wp_strip_all_tags( wc_price( abs( $diff ), [ 'currency' => $order->get_currency() ] ) ), ENT_QUOTES, 'UTF-8' ) );
+					}
+					$order->add_order_note( $note );
+					$message         = $note;
+					$extra['reload'] = true; // редът за доставка и тоталът на страницата са стари
+				} else {
+					$order->add_order_note( sprintf( __( '%1$s: доставката е променена на: %2$s', 'kanelov-shipping' ), $carrier->label(), $text ) );
+				}
+				$order->save();
 				break;
 			case 'calculate':
 			case 'create':
@@ -361,7 +443,7 @@ final class OrderMetabox {
 
 		$order = wc_get_order( $order->get_id() );
 		ob_start();
-		$this->render_inner( $order );
+		$this->render_inner( $order, $view_id );
 		$html = (string) ob_get_clean();
 
 		if ( $errors ) {
@@ -387,6 +469,7 @@ final class OrderMetabox {
 			'sms_notification' => ! empty( $fields['ks_opt_sms_notification'] ),
 			'declared_value'   => ! empty( $fields['ks_opt_declared'] ) ? (float) $order->get_total() : 0,
 			'packing_list'     => ! empty( $fields['ks_opt_packing_list'] ),
+			'invoice_before_pay_cd' => ! empty( $fields['ks_opt_invoice_before_pay_cd'] ),
 			'dimensions'       => [ (float) str_replace( ',', '.', (string) ( $fields['ks_opt_dim_l'] ?? 0 ) ), (float) str_replace( ',', '.', (string) ( $fields['ks_opt_dim_w'] ?? 0 ) ), (float) str_replace( ',', '.', (string) ( $fields['ks_opt_dim_h'] ?? 0 ) ) ],
 			'invoice_num'      => trim( (string) ( $fields['ks_opt_invoice_num'] ?? '' ) ) !== '' ? EcontCarrier::invoice_num( $order, sanitize_text_field( (string) $fields['ks_opt_invoice_num'] ) ) : '',
 			'pay_after'        => in_array( $fields['ks_opt_pay_after'] ?? '', [ 'accept', 'test' ], true ) ? $fields['ks_opt_pay_after'] : '',

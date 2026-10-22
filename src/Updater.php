@@ -12,7 +12,7 @@ final class Updater {
 
 	const REPO      = 'kanelov/kanelov-shipping';
 	const TRANSIENT = 'ks_github_release';
-	const TTL       = 6 * HOUR_IN_SECONDS;
+	const TTL       = DAY_IN_SECONDS; // обновленията са редки; „Провери за обновления“ проверява веднага
 
 	private string $basename;
 	private string $slug;
@@ -30,7 +30,7 @@ final class Updater {
 		add_action( 'admin_init', [ $this, 'maybe_force_check' ] );
 	}
 
-	/** Последният release от GitHub: ['version','package','url','body','published'] или null. Кеш 6 часа. */
+	/** Последният release от GitHub: ['version','package','url','body','published'] или null. Кеш 24 часа. */
 	public function latest( bool $force = false ): ?array {
 		$cached = get_site_transient( self::TRANSIENT );
 		if ( ! $force && is_array( $cached ) ) {

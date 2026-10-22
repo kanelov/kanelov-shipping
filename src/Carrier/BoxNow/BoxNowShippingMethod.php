@@ -44,6 +44,23 @@ final class BoxNowShippingMethod extends \WC_Shipping_Method {
 		}
 	}
 
+	/**
+	 * Надпис и цена за доставка до автомат при дадена сума на стоките (настройките на инстанцията в зоната).
+	 *
+	 * @return array{label: string, cost: float}|null
+	 */
+	public function type_option( string $type, float $subtotal ): ?array {
+		if ( $type !== DeliveryData::TYPE_LOCKER ) {
+			return null;
+		}
+		$price     = (float) str_replace( ',', '.', (string) $this->get_instance_option( 'price', '2.50' ) );
+		$free_from = (float) str_replace( ',', '.', (string) $this->get_instance_option( 'free_from', '0' ) );
+		if ( $free_from > 0 && $subtotal >= $free_from ) {
+			$price = 0.0;
+		}
+		return [ 'label' => $this->get_instance_option( 'label', '' ) ?: __( 'до автомат', 'kanelov-shipping' ), 'cost' => $price ];
+	}
+
 	public function calculate_shipping( $package = [] ): void {
 		self::unavailable( '' );
 		$settings = new BoxNowSettings();
@@ -79,13 +96,10 @@ final class BoxNowShippingMethod extends \WC_Shipping_Method {
 			return;
 		}
 		$subtotal  = (float) apply_filters( 'kanelov_shipping/free_shipping_basis', $subtotal, $package );
-		$price     = (float) str_replace( ',', '.', (string) $this->get_instance_option( 'price', '2.50' ) );
-		$free_from = (float) str_replace( ',', '.', (string) $this->get_instance_option( 'free_from', '0' ) );
-		if ( $free_from > 0 && $subtotal >= $free_from ) {
-			$price = 0.0;
-		}
-		$label   = $this->get_instance_option( 'label', '' ) ?: __( 'до автомат', 'kanelov-shipping' );
-		$options = [ DeliveryData::TYPE_LOCKER => [ 'label' => $label, 'cost' => $price ] ];
+		$option  = $this->type_option( DeliveryData::TYPE_LOCKER, $subtotal );
+		$label   = $option['label'];
+		$price   = $option['cost'];
+		$options = [ DeliveryData::TYPE_LOCKER => $option ];
 		$this->add_rate( [
 			'id'        => $this->get_rate_id(),
 			'label'     => $this->title . ' ' . $label,

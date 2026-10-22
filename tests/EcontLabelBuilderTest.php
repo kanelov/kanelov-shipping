@@ -240,4 +240,16 @@ final class EcontLabelBuilderTest extends TestCase {
 		$this->assertSame( '0887123456', EcontLabelBuilder::normalize_phone( '00359887123456' ) );
 		$this->assertSame( '0887123456', EcontLabelBuilder::normalize_phone( '0887-123-456' ) );
 	}
+
+	public function test_invoice_before_pay_cd_is_skipped_for_econtomat(): void {
+		$office = ( new EcontLabelBuilder() )->build( $this->base_input( [ 'options' => [ 'invoice_before_pay_cd' => true ] ] ) );
+		$this->assertTrue( $office['services']['invoiceBeforePayCD'] );
+
+		$locker = ( new EcontLabelBuilder() )->build( $this->base_input( [
+			'options'  => [ 'invoice_before_pay_cd' => true ],
+			'delivery' => DeliveryData::from_array( [ 'carrier' => 'econt', 'type' => 'locker', 'city_id' => 41, 'city_name' => 'Пловдив', 'office_code' => '17005' ] ),
+		] ) );
+		$this->assertArrayNotHasKey( 'invoiceBeforePayCD', $locker['services'] );
+		$this->assertSame( 22.9 > 0, $locker['services']['cdAmount'] > 0 );
+	}
 }

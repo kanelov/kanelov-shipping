@@ -33,6 +33,7 @@
 		$.post(cfg.ajax, { action: cfg.action, nonce: cfg.nonce, order_id: box.dataset.order, do: action, fields: fields })
 			.done(function (res) {
 				var d = res.data || {};
+				if (d.reload && res.success) { window.location.reload(); return; } /* нов ред за доставка и тотал в поръчката */
 				if (d.html) { box.innerHTML = d.html; mount(); }
 				notice(res.success ? 'success' : 'error', d.message || '');
 				if (action === 'calculate' && res.success) { var c = box.querySelector('.ks-calc-result'); if (c) c.textContent = d.message; }
@@ -57,6 +58,8 @@
 		box = document.getElementById('ks-order');
 		if (!box) return;
 		mount();
+		/* Смяна на куриера: показва формата му (без запис); записът е с бутона под формата. */
+		$(box).on('change', '#ks_delivery_carrier', function () { run('view_carrier'); });
 		$(box).on('click', '.ks-do', function () {
 			var action = this.dataset.do;
 			if (action === 'delete' && !window.confirm(box.querySelector('#ks-delivery[data-carrier="boxnow"]') ? cfg.i18nAdmin.confirmCancel : cfg.i18nAdmin.confirmDelete)) return;

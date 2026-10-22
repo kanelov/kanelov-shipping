@@ -48,6 +48,28 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 		return explode( ':', $rate_id )[0] === self::ID;
 	}
 
+	/**
+	 * Надпис и цена за вид доставка при дадена сума на стоките (по настройките на тази инстанция в зоната).
+	 * Ползва се от чекаута и от смяната на доставката в поръчката. null = видът е изключен.
+	 *
+	 * @return array{label: string, cost: float}|null
+	 */
+	public function type_option( string $type, float $subtotal ): ?array {
+		$types = self::rate_types();
+		if ( ! isset( $types[ $type ] ) || $this->get_instance_option( $type . '_enabled', 'yes' ) !== 'yes' ) {
+			return null;
+		}
+		$price     = (float) str_replace( ',', '.', (string) $this->get_instance_option( $type . '_price', '0' ) );
+		$free_from = (float) str_replace( ',', '.', (string) $this->get_instance_option( $type . '_free_from', '0' ) );
+		if ( $free_from > 0 && $subtotal >= $free_from ) {
+			$price = 0.0;
+		}
+		return [
+			'label' => $this->get_instance_option( $type . '_label', '' ) ?: $types[ $type ],
+			'cost'  => $price,
+		];
+	}
+
 	public function calculate_shipping( $package = [] ): void {
 		$settings = new EcontSettings();
 		if ( $settings->admins_only() && ! current_user_can( 'manage_woocommerce' ) ) {
@@ -75,15 +97,7 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 			if ( $type === DeliveryData::TYPE_LOCKER && $weight > $settings->locker_max_weight() ) {
 				continue;
 			}
-			$price     = (float) str_replace( ',', '.', (string) $this->get_instance_option( $type . '_price', '0' ) );
-			$free_from = (float) str_replace( ',', '.', (string) $this->get_instance_option( $type . '_free_from', '0' ) );
-			if ( $free_from > 0 && $subtotal >= $free_from ) {
-				$price = 0.0;
-			}
-			$options[ $type ] = [
-				'label' => $this->get_instance_option( $type . '_label', '' ) ?: $label,
-				'cost'  => $price,
-			];
+			$options[ $type ] = $this->type_option( $type, $subtotal );
 		}
 		if ( ! $options ) {
 			return;
@@ -303,7 +317,7 @@ final class EcontShippingMethod extends \WC_Shipping_Method {
 				'invoice_before_pay_cd' => [
 					'title'   => __( 'Фактура преди плащане на НП', 'kanelov-shipping' ),
 					'type'    => 'checkbox',
-					'label'   => __( 'Куриерът показва фактурата/описа преди плащане', 'kanelov-shipping' ),
+					'label'   => __( 'Куриерът показва фактурата/описа преди плащане (не важи за Еконтомат, там Еконт не го допуска)', 'kanelov-shipping' ),
 					'default' => 'no',
 				],
 				'declared_value_mode' => [

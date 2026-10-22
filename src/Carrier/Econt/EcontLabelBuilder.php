@@ -131,7 +131,8 @@ final class EcontLabelBuilder {
 			if ( ! empty( $opt['cd_pay_options_template'] ) ) {
 				$services['cdPayOptionsTemplate'] = (string) $opt['cd_pay_options_template'];
 			}
-			if ( ! empty( $opt['invoice_before_pay_cd'] ) ) {
+			// Еконт не приема „предай фактура преди плащане на НП“ за Еконтомат (няма куриер, който да я покаже).
+			if ( ! empty( $opt['invoice_before_pay_cd'] ) && $delivery->type !== DeliveryData::TYPE_LOCKER ) {
 				$services['invoiceBeforePayCD'] = true;
 			}
 		}
