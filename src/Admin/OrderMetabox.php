@@ -23,6 +23,12 @@ defined( 'ABSPATH' ) || exit;
  */
 final class OrderMetabox {
 
+	/** Въведената доставка при неуспешен запис (за да не се губи изборът при смяна на куриера). */
+	private ?DeliveryData $draft = null;
+
+	/** „Доставка“ остава отворена след смяна на избора на куриер. */
+	private bool $keep_open = false;
+
 	const AJAX  = 'ks_order_action';
 	const NONCE = 'ks_order_nonce';
 
@@ -77,6 +83,12 @@ final class OrderMetabox {
 			return;
 		}
 		echo '<div id="ks-order" data-order="' . esc_attr( (string) $order->get_id() ) . '">';
+		$key    = 'ks_order_notice_' . get_current_user_id() . '_' . $order->get_id();
+		$notice = get_transient( $key );
+		if ( is_string( $notice ) && $notice !== '' ) {
+			delete_transient( $key );
+			echo '<div class="notice notice-success inline"><p>' . esc_html( $notice ) . '</p></div>';
+		}
 		$this->render_inner( $order );
 		echo '</div>';
 	}
@@ -205,11 +217,11 @@ final class OrderMetabox {
 		$current  = self::carrier_of( $order );
 		$saved    = OrderMeta::get_delivery( $order );
 		$same     = $view->id() === $current->id();
-		$delivery = $same ? $saved : new DeliveryData();
+		$delivery = $this->draft && $this->draft->carrier === $view->id() ? $this->draft : ( $same ? $saved : new DeliveryData() );
 		$empty    = $view->id() === BoxNowCarrier::ID ? $delivery->office_code === '' : $delivery->is_empty();
 		$carriers = Plugin::instance()->carriers()->all();
 		?>
-		<details class="ks-delivery-edit" <?php echo ( $empty || ! $same ) ? 'open' : ''; ?>>
+		<details class="ks-delivery-edit" <?php echo ( $empty || ! $same || $this->keep_open ) ? 'open' : ''; ?>>
 			<summary>
 				<strong><?php esc_html_e( 'Доставка:', 'kanelov-shipping' ); ?></strong>
 				<?php echo $saved->is_empty() ? esc_html__( 'не е избрана', 'kanelov-shipping' ) : esc_html( $current->format_delivery( $saved ) ); ?>
@@ -352,27 +364,30 @@ final class OrderMetabox {
 		switch ( $do ) {
 			case 'view_carrier':
 				// Само показва формата на избрания куриер; нищо не се записва.
-				$view_id = sanitize_key( (string) ( $fields['ks_delivery_carrier'] ?? '' ) );
+				$view_id         = sanitize_key( (string) ( $fields['ks_delivery_carrier'] ?? '' ) );
+				$this->keep_open = true;
 				break;
 			case 'save_delivery':
-				$target = Plugin::instance()->carriers()->get( sanitize_key( (string) ( $fields['ks_delivery_carrier'] ?? '' ) ) ) ?? $carrier;
-				$switch = $target->id() !== $carrier->id();
-				if ( $switch && ! empty( OrderMeta::get_shipment( $order )['number'] ) ) {
-					$errors[] = __( 'Поръчката има товарителница. Изтрийте или откажете я, преди да смените куриера.', 'kanelov-shipping' );
-					break;
-				}
+				$target   = Plugin::instance()->carriers()->get( sanitize_key( (string) ( $fields['ks_delivery_carrier'] ?? '' ) ) ) ?? $carrier;
+				$switch   = $target->id() !== $carrier->id();
 				$delivery = $target->id() === BoxNowCarrier::ID ? BoxNowFormView::from_request( $fields ) : DeliveryFormView::from_request( $fields, EcontCarrier::ID );
-				$errors   = $target->validate_delivery( $delivery );
-				if ( $errors ) {
-					$view_id = $target->id();
+				$reprice  = ShippingSwitch::needs_reprice( $order, $target, $delivery );
+				// С товарителница не се сменя нито куриерът, нито видът: наложеният платеж в нея е по старата сума.
+				if ( ( $switch || $reprice ) && ! empty( OrderMeta::get_shipment( $order )['number'] ) ) {
+					$errors[] = __( 'Поръчката има товарителница. Изтрийте или откажете я, преди да смените куриера или вида доставка.', 'kanelov-shipping' );
 					break;
 				}
-				$old_delivery = OrderMeta::get_delivery( $order );
-				$reprice      = $switch || $old_delivery->type !== $delivery->type;
-				$quote        = $reprice ? ShippingSwitch::quote( $order, $target, $delivery ) : null;
+				$errors = $target->validate_delivery( $delivery );
+				if ( $errors ) {
+					$view_id     = $target->id();
+					$this->draft = $delivery;
+					break;
+				}
+				$quote = $reprice ? ShippingSwitch::quote( $order, $target, $delivery ) : null;
 				if ( is_string( $quote ) ) {
-					$errors[] = $quote;
-					$view_id  = $target->id();
+					$errors[]    = $quote;
+					$view_id     = $target->id();
+					$this->draft = $delivery;
 					break;
 				}
 				OrderMeta::set_delivery( $order, $delivery );
@@ -383,6 +398,7 @@ final class OrderMetabox {
 				$order->set_shipping_country( 'BG' );
 				$message = __( 'Доставката е запазена.', 'kanelov-shipping' );
 				if ( $quote ) {
+					$order->save();
 					$prices = ShippingSwitch::apply( $order, $target, $quote ); // записва поръчката
 					$note   = sprintf(
 						__( 'Доставката е сменена на „%1$s“: %2$s. Цена за доставка: %3$s → %4$s.', 'kanelov-shipping' ),
@@ -398,8 +414,11 @@ final class OrderMetabox {
 					$order->add_order_note( $note );
 					$message         = $note;
 					$extra['reload'] = true; // редът за доставка и тоталът на страницата са стари
+					set_transient( 'ks_order_notice_' . get_current_user_id() . '_' . $order->get_id(), $note, 300 );
 				} else {
-					$order->add_order_note( sprintf( __( '%1$s: доставката е променена на: %2$s', 'kanelov-shipping' ), $carrier->label(), $text ) );
+					$kept = $switch ? ' ' . __( 'Цената за доставка не е променена автоматично: редът за доставка в поръчката не е на Еконт или Box Now, или редовете са няколко. Проверете я ръчно.', 'kanelov-shipping' ) : '';
+					$order->add_order_note( sprintf( __( '%1$s: доставката е променена на: %2$s', 'kanelov-shipping' ), $target->label(), $text ) . $kept );
+					$message .= $kept;
 				}
 				$order->save();
 				break;

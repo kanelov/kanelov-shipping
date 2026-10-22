@@ -250,6 +250,6 @@ final class EcontLabelBuilderTest extends TestCase {
 			'delivery' => DeliveryData::from_array( [ 'carrier' => 'econt', 'type' => 'locker', 'city_id' => 41, 'city_name' => 'Пловдив', 'office_code' => '17005' ] ),
 		] ) );
 		$this->assertArrayNotHasKey( 'invoiceBeforePayCD', $locker['services'] );
-		$this->assertSame( 22.9 > 0, $locker['services']['cdAmount'] > 0 );
+		$this->assertTrue( $locker['services']['cdAmount'] > 0 );
 	}
 }
