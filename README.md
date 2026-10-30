@@ -3,6 +3,8 @@
 WooCommerce плъгин за доставка с Еконт (офис, Еконтомат, адрес) и Box Now (автомат) с товарителници от поръчката.
 Еконт работи през JSON API на ee.econt.com, Box Now през Partner API (OAuth2). Ядрото е с интерфейс за куриери.
 
+План за пускане на продажба: [docs/SALES-PLAN.md](docs/SALES-PLAN.md).
+
 ## Изисквания
 
 - WordPress 6.5+, WooCommerce 9+ (тествано с 11.x), PHP 8.1+ (тествано с 8.3/8.4), HPOS.
