@@ -22,16 +22,30 @@ final class LabelPrint {
 	/** @var array{0: \WC_Order[], 1: \WC_Order[]}|null */
 	private ?array $split = null;
 
+	/** Адресът е с избрани поръчки, но връзката е изтекла (nonce). */
+	private bool $expired = false;
+
 	public function register(): void {
 		add_action( 'admin_menu', [ $this, 'add' ], 61 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'assets' ] );
 		add_action( 'wp_ajax_' . self::AJAX, [ $this, 'ajax' ] );
 	}
 
-	/** Адрес на страницата за печат на дадени поръчки. */
+	/**
+	 * Адрес на страницата за печат на дадени поръчки, за пренасочване (не за HTML).
+	 * Не се ползва wp_nonce_url(): тя връща адреса с &amp;, браузърът го изпраща буквално и страницата не вижда
+	 * избраните поръчки (показваше всички неотпечатани от 14 дни).
+	 */
 	public static function url( array $ids ): string {
 		$ids = array_slice( array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) ), 0, self::MAX );
-		return wp_nonce_url( admin_url( 'admin.php?page=' . self::PAGE . '&orders=' . implode( ',', $ids ) ), self::NONCE );
+		return add_query_arg(
+			[
+				'page'     => self::PAGE,
+				'orders'   => implode( ',', $ids ),
+				'_wpnonce' => wp_create_nonce( self::NONCE ),
+			],
+			admin_url( 'admin.php' )
+		);
 	}
 
 	public function add(): void {
@@ -68,7 +82,12 @@ final class LabelPrint {
 	/** Поръчките от адреса (с проверен nonce) или неотпечатаните от последните 14 дни. */
 	private function requested_orders(): array {
 		$raw = isset( $_GET['orders'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['orders'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		if ( $raw !== '' && wp_verify_nonce( (string) ( $_GET['_wpnonce'] ?? '' ), self::NONCE ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput
+		if ( $raw !== '' && ! wp_verify_nonce( (string) ( $_GET['_wpnonce'] ?? '' ), self::NONCE ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput
+			// Избрани поръчки с изтекла връзка: нищо, вместо друг списък, за да не се печатат чужди етикети.
+			$this->expired = true;
+			return [];
+		}
+		if ( $raw !== '' ) {
 			$orders = [];
 			foreach ( array_slice( array_filter( array_map( 'intval', explode( ',', $raw ) ) ), 0, self::MAX ) as $id ) {
 				$order = wc_get_order( $id );
@@ -123,7 +142,9 @@ final class LabelPrint {
 				<p class="description"><?php esc_html_e( 'Неотпечатаните товарителници от последните 14 дни. За други поръчки изберете ги в списъка с поръчки и изберете действието „Печат на товарителници“.', 'kanelov-shipping' ); ?></p>
 			<?php endif; ?>
 
-			<?php if ( ! $with ) : ?>
+			<?php if ( $this->expired ) : ?>
+				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Връзката за печат е изтекла. Изберете поръчките отново в списъка с поръчки и изберете „Печат на товарителници“.', 'kanelov-shipping' ); ?></p></div>
+			<?php elseif ( ! $with ) : ?>
 				<div class="notice notice-info inline"><p><?php esc_html_e( 'Няма товарителници за печат.', 'kanelov-shipping' ); ?></p></div>
 			<?php else : ?>
 				<div class="ks-print__bar">
